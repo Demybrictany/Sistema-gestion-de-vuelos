@@ -7,6 +7,7 @@ const sequelize = require('./db/database');
 // ==============================
 // RUTAS
 // ==============================
+const authRoutes = require('./routes/auth.routes');
 const rolRoutes = require('./routes/rol.routes');
 const usuarioRoutes = require('./routes/usuario.routes');
 const pasajeroRoutes = require('./routes/pasajero.routes');
@@ -37,6 +38,7 @@ app.use(express.json());
 // ==============================
 // ENDPOINTS
 // ==============================
+app.use('/api/auth', authRoutes);
 app.use('/api/roles', rolRoutes);
 app.use('/api/usuarios', usuarioRoutes);
 app.use('/api/pasajeros', pasajeroRoutes);
