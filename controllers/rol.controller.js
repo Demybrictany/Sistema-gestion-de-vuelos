@@ -1,9 +1,9 @@
 const Rol = require('../models/rol.model');
 
 const responderError = (res, mensaje, error) => {
+  console.error(error);
   return res.status(500).json({
     mensaje,
-    error: error.message,
   });
 };
 
@@ -21,6 +21,7 @@ const obtenerRoles = async (req, res) => {
 
     return res.status(200).json(roles);
   } catch (error) {
+    console.error(error);
     return responderError(res, 'Error al obtener los roles', error);
   }
 };
@@ -38,6 +39,7 @@ const obtenerRolPorId = async (req, res) => {
 
     return res.status(200).json(rol);
   } catch (error) {
+    console.error(error);
     return responderError(res, 'Error al obtener el rol', error);
   }
 };
@@ -62,6 +64,7 @@ const crearRol = async (req, res) => {
       rol: nuevoRol,
     });
   } catch (error) {
+    console.error(error);
     return responderError(res, 'Error al crear el rol', error);
   }
 };
@@ -91,6 +94,7 @@ const actualizarRol = async (req, res) => {
       rol,
     });
   } catch (error) {
+    console.error(error);
     return responderError(res, 'Error al actualizar el rol', error);
   }
 };
@@ -112,6 +116,7 @@ const eliminarRol = async (req, res) => {
       mensaje: 'Rol eliminado correctamente',
     });
   } catch (error) {
+    console.error(error);
     return responderError(res, 'Error al eliminar el rol', error);
   }
 };

@@ -8,20 +8,16 @@ const {
   actualizarBanda,
   eliminarBanda,
 } = require('../controllers/banda_equipaje.controller');
+const { validar } = require('../middlewares/validar.middleware');
+const {
+  crearBandaEquipaje,
+  actualizarBandaEquipaje,
+} = require('../validators/schemas');
 
-// Obtener todas las bandas
 router.get('/', obtenerBandas);
-
-// Obtener banda por ID
 router.get('/:id', obtenerBandaPorId);
-
-// Crear banda
-router.post('/', crearBanda);
-
-// Actualizar banda
-router.put('/:id', actualizarBanda);
-
-// Eliminar banda
+router.post('/', validar(crearBandaEquipaje), crearBanda);
+router.put('/:id', validar(actualizarBandaEquipaje), actualizarBanda);
 router.delete('/:id', eliminarBanda);
 
 module.exports = router;

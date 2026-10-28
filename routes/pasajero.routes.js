@@ -8,20 +8,16 @@ const {
   actualizarPasajero,
   eliminarPasajero,
 } = require('../controllers/pasajero.controller');
+const { validar } = require('../middlewares/validar.middleware');
+const {
+  crearPasajero: crearPasajeroSchema,
+  actualizarPasajero: actualizarPasajeroSchema,
+} = require('../validators/schemas');
 
-// Obtener todos los pasajeros
 router.get('/', obtenerPasajeros);
-
-// Obtener pasajero por ID
 router.get('/:id', obtenerPasajeroPorId);
-
-// Crear pasajero
-router.post('/', crearPasajero);
-
-// Actualizar pasajero
-router.put('/:id', actualizarPasajero);
-
-// Eliminar pasajero
+router.post('/', validar(crearPasajeroSchema), crearPasajero);
+router.put('/:id', validar(actualizarPasajeroSchema), actualizarPasajero);
 router.delete('/:id', eliminarPasajero);
 
 module.exports = router;

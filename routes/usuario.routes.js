@@ -8,11 +8,16 @@ const {
   actualizarUsuario,
   eliminarUsuario,
 } = require('../controllers/usuario.controller');
+const { validar } = require('../middlewares/validar.middleware');
+const {
+  crearUsuario: crearUsuarioSchema,
+  actualizarUsuario: actualizarUsuarioSchema,
+} = require('../validators/schemas');
 
 router.get('/', obtenerUsuarios);
 router.get('/:id', obtenerUsuarioPorId);
-router.post('/', crearUsuario);
-router.put('/:id', actualizarUsuario);
+router.post('/', validar(crearUsuarioSchema), crearUsuario);
+router.put('/:id', validar(actualizarUsuarioSchema), actualizarUsuario);
 router.delete('/:id', eliminarUsuario);
 
 module.exports = router;

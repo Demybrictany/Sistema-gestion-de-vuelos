@@ -8,20 +8,16 @@ const {
   actualizarAeropuerto,
   eliminarAeropuerto,
 } = require('../controllers/aeropuerto.controller');
+const { validar } = require('../middlewares/validar.middleware');
+const {
+  crearAeropuerto: crearAeropuertoSchema,
+  actualizarAeropuerto: actualizarAeropuertoSchema,
+} = require('../validators/schemas');
 
-// Obtener todos los aeropuertos
 router.get('/', obtenerAeropuertos);
-
-// Obtener aeropuerto por ID
 router.get('/:id', obtenerAeropuertoPorId);
-
-// Crear aeropuerto
-router.post('/', crearAeropuerto);
-
-// Actualizar aeropuerto
-router.put('/:id', actualizarAeropuerto);
-
-// Eliminar aeropuerto
+router.post('/', validar(crearAeropuertoSchema), crearAeropuerto);
+router.put('/:id', validar(actualizarAeropuertoSchema), actualizarAeropuerto);
 router.delete('/:id', eliminarAeropuerto);
 
 module.exports = router;

@@ -19,9 +19,9 @@ const obtenerAuditorias = async (req, res) => {
 
     res.status(200).json(auditorias);
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al obtener los registros de auditoría',
-      error: error.message,
     });
   }
 };
@@ -51,9 +51,9 @@ const obtenerAuditoriaPorId = async (req, res) => {
 
     res.status(200).json(auditoria);
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al obtener el registro de auditoría',
-      error: error.message,
     });
   }
 };
@@ -72,9 +72,9 @@ const obtenerAuditoriasPorUsuario = async (req, res) => {
 
     res.status(200).json(auditorias);
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al obtener la auditoría del usuario',
-      error: error.message,
     });
   }
 };
@@ -120,9 +120,9 @@ const crearAuditoria = async (req, res) => {
       auditoria: nuevaAuditoria,
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al crear el registro de auditoría',
-      error: error.message,
     });
   }
 };
@@ -146,9 +146,9 @@ const eliminarAuditoria = async (req, res) => {
       mensaje: 'Registro de auditoría eliminado correctamente',
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al eliminar el registro de auditoría',
-      error: error.message,
     });
   }
 };

@@ -3,10 +3,24 @@ require('dotenv').config();
 
 // Neon y la mayoría de proveedores en la nube exigen SSL.
 // En local se deja desactivado con DB_SSL=false.
-const dialectOptions =
-  process.env.DB_SSL === 'true'
-    ? { ssl: { require: true, rejectUnauthorized: false } }
-    : undefined;
+const dialectOptions = {
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10000,
+};
+
+if (process.env.DB_SSL === 'true') {
+  dialectOptions.ssl = {
+    require: true,
+    rejectUnauthorized: false,
+  };
+}
+
+const pool = {
+  max: Number(process.env.DB_POOL_MAX || 10),
+  min: 0,
+  acquire: 30000,
+  idle: 10000,
+};
 
 // DATABASE_URL tiene prioridad (formato de Neon).
 // Si no existe, se usan las variables individuales.
@@ -15,6 +29,7 @@ const sequelize = process.env.DATABASE_URL
       dialect: 'postgres',
       logging: false,
       dialectOptions,
+      pool,
     })
   : new Sequelize(
       process.env.DB_NAME,
@@ -26,6 +41,7 @@ const sequelize = process.env.DATABASE_URL
         dialect: 'postgres',
         logging: false,
         dialectOptions,
+        pool,
       }
     );
 

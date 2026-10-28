@@ -38,9 +38,9 @@ const obtenerEscalas = async (req, res) => {
 
     res.status(200).json(escalas);
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al obtener las escalas',
-      error: error.message,
     });
   }
 };
@@ -69,9 +69,9 @@ const obtenerEscalaPorId = async (req, res) => {
 
     res.status(200).json(escala);
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al obtener la escala',
-      error: error.message,
     });
   }
 };
@@ -199,9 +199,9 @@ const crearEscala = async (req, res) => {
       escala: nuevaEscala,
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al crear la escala',
-      error: error.message,
     });
   }
 };
@@ -234,9 +234,9 @@ const actualizarEscala = async (req, res) => {
       escala,
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al actualizar la escala',
-      error: error.message,
     });
   }
 };
@@ -260,9 +260,9 @@ const eliminarEscala = async (req, res) => {
       mensaje: 'Escala eliminada correctamente',
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al eliminar la escala',
-      error: error.message,
     });
   }
 };

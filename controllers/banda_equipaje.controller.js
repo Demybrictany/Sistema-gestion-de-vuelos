@@ -7,9 +7,9 @@ const obtenerBandas = async (req, res) => {
 
     res.status(200).json(bandas);
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al obtener las bandas de equipaje',
-      error: error.message,
     });
   }
 };
@@ -29,9 +29,9 @@ const obtenerBandaPorId = async (req, res) => {
 
     res.status(200).json(banda);
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al obtener la banda de equipaje',
-      error: error.message,
     });
   }
 };
@@ -58,9 +58,9 @@ const crearBanda = async (req, res) => {
       banda: nuevaBanda,
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al crear la banda de equipaje',
-      error: error.message,
     });
   }
 };
@@ -99,9 +99,9 @@ const actualizarBanda = async (req, res) => {
       banda,
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al actualizar la banda de equipaje',
-      error: error.message,
     });
   }
 };
@@ -125,9 +125,9 @@ const eliminarBanda = async (req, res) => {
       mensaje: 'Banda de equipaje eliminada correctamente',
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al eliminar la banda de equipaje',
-      error: error.message,
     });
   }
 };

@@ -6,19 +6,17 @@ const {
   obtenerHistorialVueloPorId,
   obtenerHistorialPorVuelo,
   crearHistorialVuelo,
-  eliminarHistorialVuelo,
 } = require('../controllers/historial_vuelo.controller');
+const { validar } = require('../middlewares/validar.middleware');
+const {
+  crearHistorialVuelo: crearHistorialVueloSchema,
+} = require('../validators/schemas');
 
 router.get('/', obtenerHistorialVuelos);
-
-// Historial completo de un vuelo
 router.get('/vuelo/:idVuelo', obtenerHistorialPorVuelo);
-
-// Registro específico
 router.get('/:id', obtenerHistorialVueloPorId);
+router.post('/', validar(crearHistorialVueloSchema), crearHistorialVuelo);
 
-router.post('/', crearHistorialVuelo);
-
-router.delete('/:id', eliminarHistorialVuelo);
+// El historial es de solo lectura: no se expone DELETE.
 
 module.exports = router;

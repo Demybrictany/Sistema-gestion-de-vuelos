@@ -7,9 +7,9 @@ const obtenerAeropuertos = async (req, res) => {
 
     res.status(200).json(aeropuertos);
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al obtener los aeropuertos',
-      error: error.message,
     });
   }
 };
@@ -29,9 +29,9 @@ const obtenerAeropuertoPorId = async (req, res) => {
 
     res.status(200).json(aeropuerto);
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al obtener el aeropuerto',
-      error: error.message,
     });
   }
 };
@@ -74,9 +74,9 @@ const crearAeropuerto = async (req, res) => {
       aeropuerto: nuevoAeropuerto,
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al crear el aeropuerto',
-      error: error.message,
     });
   }
 };
@@ -132,9 +132,9 @@ const actualizarAeropuerto = async (req, res) => {
       aeropuerto,
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al actualizar el aeropuerto',
-      error: error.message,
     });
   }
 };
@@ -158,9 +158,9 @@ const eliminarAeropuerto = async (req, res) => {
       mensaje: 'Aeropuerto eliminado correctamente',
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al eliminar el aeropuerto',
-      error: error.message,
     });
   }
 };

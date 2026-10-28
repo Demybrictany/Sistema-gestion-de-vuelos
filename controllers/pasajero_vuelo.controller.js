@@ -4,247 +4,88 @@ const Vuelo = require('../models/vuelo.model');
 const Itinerario = require('../models/itinerario.model');
 const Usuario = require('../models/usuario.model');
 
-// Obtener todos los registros
-const obtenerPasajerosVuelos = async (req, res) => {
-  try {
-    const registros = await PasajeroVuelo.findAll({
-      include: [
-        {
-          model: Pasajero,
-          as: 'pasajero',
-        },
-        {
-          model: Vuelo,
-          as: 'vuelo',
-        },
-        {
-          model: Itinerario,
-          as: 'itinerario',
-        },
-        {
-          model: Usuario,
-          as: 'usuario_registro',
-          attributes: {
-            exclude: ['password_hash'],
-          },
-        },
-      ],
-    });
+const asyncHandler = require('../lib/async-handler');
+const {
+  asignarPasajero,
+  actualizarAsignacion,
+  eliminarAsignacion,
+} = require('../services/pasajero_vuelo.service');
 
-    res.status(200).json(registros);
-  } catch (error) {
-    res.status(500).json({
-      mensaje: 'Error al obtener los pasajeros de los vuelos',
-      error: error.message,
-    });
-  }
-};
+const INCLUDE_ASIGNACION = [
+  { model: Pasajero, as: 'pasajero' },
+  { model: Vuelo, as: 'vuelo' },
+  { model: Itinerario, as: 'itinerario' },
+  {
+    model: Usuario,
+    as: 'usuario_registro',
+    attributes: { exclude: ['password_hash'] },
+  },
+];
+
+const contextoDe = (req) => ({
+  idUsuario: req.usuario?.id_usuario || null,
+});
+
+// Obtener todos los registros
+const obtenerPasajerosVuelos = asyncHandler(async (req, res) => {
+  const registros = await PasajeroVuelo.findAll({
+    include: INCLUDE_ASIGNACION,
+  });
+
+  res.status(200).json(registros);
+});
 
 // Obtener registro por ID
-const obtenerPasajeroVueloPorId = async (req, res) => {
-  try {
-    const { id } = req.params;
+const obtenerPasajeroVueloPorId = asyncHandler(async (req, res) => {
+  const registro = await PasajeroVuelo.findByPk(req.params.id, {
+    include: INCLUDE_ASIGNACION,
+  });
 
-    const registro = await PasajeroVuelo.findByPk(id, {
-      include: [
-        {
-          model: Pasajero,
-          as: 'pasajero',
-        },
-        {
-          model: Vuelo,
-          as: 'vuelo',
-        },
-        {
-          model: Itinerario,
-          as: 'itinerario',
-        },
-        {
-          model: Usuario,
-          as: 'usuario_registro',
-          attributes: {
-            exclude: ['password_hash'],
-          },
-        },
-      ],
+  if (!registro) {
+    res.status(404).json({
+      mensaje: 'Registro de pasajero y vuelo no encontrado',
     });
-
-    if (!registro) {
-      return res.status(404).json({
-        mensaje: 'Registro de pasajero y vuelo no encontrado',
-      });
-    }
-
-    res.status(200).json(registro);
-  } catch (error) {
-    res.status(500).json({
-      mensaje: 'Error al obtener el registro',
-      error: error.message,
-    });
+    return;
   }
-};
 
-// Registrar pasajero en un vuelo
-const crearPasajeroVuelo = async (req, res) => {
-  try {
-    const {
-      id_pasajero,
-      id_vuelo,
-      id_itinerario,
-      numero_asiento,
-      registrado_por,
-    } = req.body;
+  res.status(200).json(registro);
+});
 
-    if (!id_pasajero || !id_vuelo) {
-      return res.status(400).json({
-        mensaje: 'El pasajero y el vuelo son obligatorios',
-      });
-    }
+// Registrar pasajero en un vuelo (cupo y duplicados validados en transacción)
+const crearPasajeroVuelo = asyncHandler(async (req, res) => {
+  const registro = await asignarPasajero({
+    datos: req.body,
+    contexto: contextoDe(req),
+  });
 
-    const pasajero = await Pasajero.findByPk(id_pasajero);
-
-    if (!pasajero) {
-      return res.status(400).json({
-        mensaje: 'El pasajero seleccionado no existe',
-      });
-    }
-
-    const vuelo = await Vuelo.findByPk(id_vuelo);
-
-    if (!vuelo) {
-      return res.status(400).json({
-        mensaje: 'El vuelo seleccionado no existe',
-      });
-    }
-
-    if (id_itinerario) {
-      const itinerario = await Itinerario.findByPk(id_itinerario);
-
-      if (!itinerario) {
-        return res.status(400).json({
-          mensaje: 'El itinerario seleccionado no existe',
-        });
-      }
-    }
-
-    if (registrado_por) {
-      const usuario = await Usuario.findByPk(registrado_por);
-
-      if (!usuario) {
-        return res.status(400).json({
-          mensaje: 'El usuario que realiza el registro no existe',
-        });
-      }
-    }
-
-    // Comprobar que el pasajero no esté registrado dos veces
-    // en el mismo vuelo
-    const existente = await PasajeroVuelo.findOne({
-      where: {
-        id_pasajero,
-        id_vuelo,
-      },
-    });
-
-    if (existente) {
-      return res.status(409).json({
-        mensaje: 'El pasajero ya está registrado en este vuelo',
-      });
-    }
-
-    const nuevoRegistro = await PasajeroVuelo.create({
-      id_pasajero,
-      id_vuelo,
-      id_itinerario,
-      numero_asiento,
-      estado: 'RESERVADO',
-      registrado_por,
-    });
-
-    res.status(201).json({
-      mensaje: 'Pasajero registrado en el vuelo correctamente',
-      pasajero_vuelo: nuevoRegistro,
-    });
-  } catch (error) {
-    res.status(500).json({
-      mensaje: 'Error al registrar el pasajero en el vuelo',
-      error: error.message,
-    });
-  }
-};
+  res.status(201).json({
+    mensaje: 'Pasajero registrado en el vuelo correctamente',
+    pasajero_vuelo: registro,
+  });
+});
 
 // Actualizar registro
-const actualizarPasajeroVuelo = async (req, res) => {
-  try {
-    const { id } = req.params;
+const actualizarPasajeroVuelo = asyncHandler(async (req, res) => {
+  const registro = await actualizarAsignacion({
+    idAsignacion: req.params.id,
+    datos: req.body,
+    contexto: contextoDe(req),
+  });
 
-    const registro = await PasajeroVuelo.findByPk(id);
-
-    if (!registro) {
-      return res.status(404).json({
-        mensaje: 'Registro de pasajero y vuelo no encontrado',
-      });
-    }
-
-    const {
-      id_itinerario,
-      numero_asiento,
-      estado,
-      registrado_por,
-    } = req.body;
-
-    const datosActualizar = {
-      id_itinerario,
-      numero_asiento,
-      estado,
-      registrado_por,
-    };
-
-    Object.keys(datosActualizar).forEach((campo) => {
-      if (datosActualizar[campo] === undefined) {
-        delete datosActualizar[campo];
-      }
-    });
-
-    await registro.update(datosActualizar);
-
-    res.status(200).json({
-      mensaje: 'Registro actualizado correctamente',
-      pasajero_vuelo: registro,
-    });
-  } catch (error) {
-    res.status(500).json({
-      mensaje: 'Error al actualizar el registro',
-      error: error.message,
-    });
-  }
-};
+  res.status(200).json({
+    mensaje: 'Registro actualizado correctamente',
+    pasajero_vuelo: registro,
+  });
+});
 
 // Eliminar registro
-const eliminarPasajeroVuelo = async (req, res) => {
-  try {
-    const { id } = req.params;
+const eliminarPasajeroVuelo = asyncHandler(async (req, res) => {
+  await eliminarAsignacion(req.params.id);
 
-    const registro = await PasajeroVuelo.findByPk(id);
-
-    if (!registro) {
-      return res.status(404).json({
-        mensaje: 'Registro de pasajero y vuelo no encontrado',
-      });
-    }
-
-    await registro.destroy();
-
-    res.status(200).json({
-      mensaje: 'Registro eliminado correctamente',
-    });
-  } catch (error) {
-    res.status(500).json({
-      mensaje: 'Error al eliminar el registro',
-      error: error.message,
-    });
-  }
-};
+  res.status(200).json({
+    mensaje: 'Registro eliminado correctamente',
+  });
+});
 
 module.exports = {
   obtenerPasajerosVuelos,

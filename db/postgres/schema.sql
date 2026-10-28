@@ -8,6 +8,10 @@
 
 BEGIN;
 
+-- Necesaria para la restricción de exclusión que impide dos vuelos
+-- en la misma puerta con horarios solapados.
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
 -- ------------------------------------------------------------
 -- Limpieza (permite volver a ejecutar el script)
 -- ------------------------------------------------------------
@@ -23,9 +27,9 @@ DROP TABLE IF EXISTS itinerarios CASCADE;
 DROP TABLE IF EXISTS vuelos CASCADE;
 DROP TABLE IF EXISTS bandas_equipaje CASCADE;
 DROP TABLE IF EXISTS puertas CASCADE;
+DROP TABLE IF EXISTS usuarios CASCADE;
 DROP TABLE IF EXISTS pasajeros CASCADE;
 DROP TABLE IF EXISTS aeropuertos CASCADE;
-DROP TABLE IF EXISTS usuarios CASCADE;
 DROP TABLE IF EXISTS roles CASCADE;
 
 DROP TYPE IF EXISTS tipo_notificacion CASCADE;
@@ -147,6 +151,7 @@ CREATE TABLE usuarios (
   apellidos VARCHAR(100) NOT NULL,
   correo VARCHAR(150) UNIQUE,
   telefono VARCHAR(30),
+  id_pasajero INTEGER UNIQUE,
   estado estado_activo NOT NULL DEFAULT 'ACTIVO',
   ultimo_acceso TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -187,6 +192,13 @@ CREATE TABLE pasajeros (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Vínculo opcional entre un usuario con rol PASAJERO y su ficha de pasajero.
+-- Se difiere porque el seed inserta usuarios antes que pasajeros.
+ALTER TABLE usuarios
+  ADD CONSTRAINT fk_usuario_pasajero FOREIGN KEY (id_pasajero)
+    REFERENCES pasajeros (id_pasajero) ON DELETE SET NULL ON UPDATE CASCADE
+    DEFERRABLE INITIALLY DEFERRED;
 
 -- ------------------------------------------------------------
 -- puertas (25 puertas de embarque)
@@ -249,6 +261,17 @@ CREATE INDEX fk_vuelo_puerta_idx ON vuelos (id_puerta);
 CREATE INDEX idx_vuelos_fecha_salida ON vuelos (fecha_salida);
 CREATE INDEX idx_vuelos_estado ON vuelos (estado);
 CREATE INDEX idx_vuelos_codigo ON vuelos (codigo_vuelo);
+
+-- Regla de negocio a nivel de base de datos: una puerta no puede tener
+-- dos vuelos activos con intervalos de tiempo solapados. La restricción
+-- también protege contra solicitudes concurrentes.
+ALTER TABLE vuelos
+  ADD CONSTRAINT no_solape_puerta
+  EXCLUDE USING gist (
+    id_puerta WITH =,
+    tsrange(fecha_salida + hora_salida, fecha_llegada + hora_llegada, '[)') WITH &&
+  )
+  WHERE (id_puerta IS NOT NULL AND estado <> 'CANCELADO');
 
 -- ------------------------------------------------------------
 -- itinerarios

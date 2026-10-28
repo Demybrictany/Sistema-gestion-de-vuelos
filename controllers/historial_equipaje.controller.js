@@ -34,9 +34,9 @@ const obtenerHistorialEquipajes = async (req, res) => {
 
     res.status(200).json(historial);
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al obtener el historial de equipajes',
-      error: error.message,
     });
   }
 };
@@ -69,9 +69,9 @@ const obtenerHistorialEquipajePorId = async (req, res) => {
 
     res.status(200).json(historial);
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al obtener el historial del equipaje',
-      error: error.message,
     });
   }
 };
@@ -107,9 +107,9 @@ const obtenerHistorialPorEquipaje = async (req, res) => {
 
     res.status(200).json(historial);
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al obtener el historial del equipaje',
-      error: error.message,
     });
   }
 };
@@ -188,9 +188,9 @@ const crearHistorialEquipaje = async (req, res) => {
       historial: nuevoHistorial,
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al registrar el historial del equipaje',
-      error: error.message,
     });
   }
 };
@@ -214,9 +214,9 @@ const eliminarHistorialEquipaje = async (req, res) => {
       mensaje: 'Registro de historial eliminado correctamente',
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al eliminar el historial del equipaje',
-      error: error.message,
     });
   }
 };
