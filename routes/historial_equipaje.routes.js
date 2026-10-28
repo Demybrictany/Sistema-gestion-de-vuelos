@@ -6,19 +6,21 @@ const {
   obtenerHistorialEquipajePorId,
   obtenerHistorialPorEquipaje,
   crearHistorialEquipaje,
-  eliminarHistorialEquipaje,
 } = require('../controllers/historial_equipaje.controller');
+const { validar } = require('../middlewares/validar.middleware');
+const {
+  crearHistorialEquipaje: crearHistorialEquipajeSchema,
+} = require('../validators/schemas');
 
 router.get('/', obtenerHistorialEquipajes);
-
-// Historial completo de un equipaje
 router.get('/equipaje/:idEquipaje', obtenerHistorialPorEquipaje);
-
-// Registro específico
 router.get('/:id', obtenerHistorialEquipajePorId);
+router.post(
+  '/',
+  validar(crearHistorialEquipajeSchema),
+  crearHistorialEquipaje
+);
 
-router.post('/', crearHistorialEquipaje);
-
-router.delete('/:id', eliminarHistorialEquipaje);
+// El historial es de solo lectura: no se expone DELETE.
 
 module.exports = router;

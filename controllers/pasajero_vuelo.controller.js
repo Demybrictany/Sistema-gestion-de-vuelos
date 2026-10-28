@@ -33,9 +33,9 @@ const obtenerPasajerosVuelos = async (req, res) => {
 
     res.status(200).json(registros);
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al obtener los pasajeros de los vuelos',
-      error: error.message,
     });
   }
 };
@@ -77,9 +77,9 @@ const obtenerPasajeroVueloPorId = async (req, res) => {
 
     res.status(200).json(registro);
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al obtener el registro',
-      error: error.message,
     });
   }
 };
@@ -114,6 +114,25 @@ const crearPasajeroVuelo = async (req, res) => {
     if (!vuelo) {
       return res.status(400).json({
         mensaje: 'El vuelo seleccionado no existe',
+      });
+    }
+
+    if (['CANCELADO', 'FINALIZADO', 'ATERRIZADO'].includes(vuelo.estado)) {
+      return res.status(400).json({
+        mensaje: `No se puede asignar pasajeros a un vuelo en estado ${vuelo.estado}`,
+      });
+    }
+
+    const asignados = await PasajeroVuelo.count({
+      where: { id_vuelo: vuelo.id_vuelo },
+    });
+
+    if (
+      vuelo.capacidad_pasajeros > 0 &&
+      asignados >= vuelo.capacidad_pasajeros
+    ) {
+      return res.status(409).json({
+        mensaje: 'El vuelo alcanzó su capacidad máxima de pasajeros',
       });
     }
 
@@ -166,9 +185,9 @@ const crearPasajeroVuelo = async (req, res) => {
       pasajero_vuelo: nuevoRegistro,
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al registrar el pasajero en el vuelo',
-      error: error.message,
     });
   }
 };
@@ -213,9 +232,9 @@ const actualizarPasajeroVuelo = async (req, res) => {
       pasajero_vuelo: registro,
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al actualizar el registro',
-      error: error.message,
     });
   }
 };
@@ -239,9 +258,9 @@ const eliminarPasajeroVuelo = async (req, res) => {
       mensaje: 'Registro eliminado correctamente',
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al eliminar el registro',
-      error: error.message,
     });
   }
 };

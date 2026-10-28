@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
 const Usuario = require('../models/usuario.model');
 const Rol = require('../models/rol.model');
+const { registrarAuditoria } = require('../services/auditoria.service');
 
 const INCLUDE_ROL = {
   model: Rol,
@@ -17,6 +18,7 @@ const buildSafeUser = (usuario) => ({
   apellidos: usuario.apellidos,
   correo: usuario.correo,
   telefono: usuario.telefono,
+  id_pasajero: usuario.id_pasajero,
   estado: usuario.estado,
   ultimo_acceso: usuario.ultimo_acceso,
   rol: usuario.rol
@@ -78,12 +80,29 @@ const login = async (req, res) => {
     await usuario.update({ ultimo_acceso: ultimoAcceso });
     usuario.ultimo_acceso = ultimoAcceso;
 
+    try {
+      await registrarAuditoria({
+        idUsuario: usuario.id_usuario,
+        accion: 'LOGIN',
+        tabla: 'usuarios',
+        idRegistro: usuario.id_usuario,
+        descripcion: `Inicio de sesión de ${usuario.nombre_usuario}`,
+        ip: req.ip,
+      });
+    } catch (error) {
+      console.error(
+        'No se pudo registrar la auditoría de login:',
+        error.message
+      );
+    }
+
     const token = jwt.sign(
       {
         id_usuario: usuario.id_usuario,
         nombre_usuario: usuario.nombre_usuario,
         id_rol: usuario.id_rol,
         rol: usuario.rol?.nombre,
+        id_pasajero: usuario.id_pasajero,
       },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '8h' }
@@ -94,6 +113,7 @@ const login = async (req, res) => {
       usuario: buildSafeUser(usuario),
     });
   } catch (error) {
+    console.error(error);
     return res.status(500).json({
       mensaje: 'Error al iniciar sesion',
     });
@@ -116,6 +136,7 @@ const me = async (req, res) => {
       usuario: buildSafeUser(usuario),
     });
   } catch (error) {
+    console.error(error);
     return res.status(500).json({
       mensaje: 'Error al verificar la sesion',
     });

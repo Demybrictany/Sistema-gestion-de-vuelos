@@ -1,8 +1,8 @@
 # Sistema de Gestión de Vuelos — AICM
 
-Sistema para la gestión de **vuelos, pasajeros y equipaje** del Aeropuerto Internacional de la Ciudad de México (AICM). Permite administrar puertas de embarque, bandas de equipaje, itinerarios, escalas y notificaciones a los pasajeros.
+Sistema para la gestión de **vuelos, pasajeros y equipaje** del Aeropuerto Internacional de la Ciudad de México (AICM). Administra puertas de embarque, bandas de equipaje, itinerarios, escalas, notificaciones, historial y auditoría.
 
-**Versión:** `v1.0.0`
+**Versión:** `v1.1.0`
 **Repositorio:** https://github.com/Demybrictany/Sistema-gestion-de-vuelos
 **Equipo:** Juanjo, Demy
 
@@ -12,13 +12,30 @@ Sistema para la gestión de **vuelos, pasajeros y equipaje** del Aeropuerto Inte
 
 El sistema modela la operación del aeropuerto:
 
-- Todo vuelo nace en estado `PROGRAMADO` y puede cambiar de horario, retrasarse, abordar o cancelarse.
-- Una puerta no puede tener dos vuelos al mismo tiempo.
+- Todo vuelo nace en estado `PROGRAMADO` y puede retrasarse, abordar, aterrizar, finalizar o cancelarse siguiendo una máquina de estados.
+- Una puerta no puede tener dos vuelos activos con horarios solapados. La regla se valida en la aplicación **y en la base de datos** mediante una restricción de exclusión de PostgreSQL.
 - El equipaje puede viajar en varios tramos (conexiones) sin que el pasajero tenga que retirarlo.
-- Los pasajeros reciben notificaciones sobre puerta de embarque, banda de equipaje, horario y escalas.
+- Los pasajeros reciben notificaciones automáticas sobre puerta de embarque, banda de equipaje, cambios de horario, retrasos, cancelaciones y escalas.
+- Cada operación relevante queda registrada en el historial y en la auditoría.
 - El catálogo incluye **25 puertas de embarque**, 10 bandas, 6 aeropuertos y datos de ejemplo.
 
-Esta versión implementa la **base del backend y la migración a PostgreSQL**; el panel gráfico en tiempo real, la mensajería asíncrona, los reportes y el agente de IA se desarrollarán en las siguientes versiones (ver [Hoja de ruta](#hoja-de-ruta)).
+El panel gráfico en tiempo real, la mensajería asíncrona, los reportes y el agente de IA se desarrollarán en las siguientes versiones (ver [Hoja de ruta](#hoja-de-ruta)).
+
+---
+
+## Novedades de la v1.1.0
+
+- **Seguridad:** todas las rutas `/api/*` requieren JWT (excepto el login). Permisos por rol: administrador, secretario y pasajero.
+- **Validación:** esquemas Zod estrictos en todos los endpoints de escritura (rechazan campos desconocidos y datos inválidos).
+- **Máquina de estados de vuelo** con transiciones permitidas y validación de reprogramación, cambio de puerta y cancelación.
+- **Conflicto de puertas a nivel de base de datos** con `EXCLUDE USING gist` (protege también contra solicitudes concurrentes).
+- **Transacciones** en las operaciones de vuelo y equipaje.
+- **Notificaciones automáticas** al pasajero por cambios de puerta, horario, retraso, cancelación, escala y banda.
+- **Historial automático** de cambios de vuelo y movimientos de equipaje.
+- **Auditoría automática** de altas, modificaciones y bajas mediante hooks de Sequelize.
+- **Flujo de equipaje en conexión:** registro de tramos, validación de continuidad de ruta, asignación de banda y entrega.
+- **Vínculo usuario–pasajero:** cada usuario con rol `PASAJERO` puede consultar sus propios vuelos, equipajes y notificaciones.
+- **Pruebas de integración:** 56 verificaciones automatizadas (`npm run test:api`).
 
 ---
 
@@ -30,6 +47,7 @@ Esta versión implementa la **base del backend y la migración a PostgreSQL**; e
 | Framework | Express 5 |
 | ORM | Sequelize 6 |
 | Base de datos | PostgreSQL 14+ (local o [Neon](https://neon.tech)) |
+| Validación | Zod 4 |
 | Autenticación | JWT + bcryptjs |
 | Tiempo real | Socket.io (reservado para la siguiente versión) |
 
@@ -39,22 +57,34 @@ Esta versión implementa la **base del backend y la migración a PostgreSQL**; e
 
 ```
 .
-├── app.js                      # Punto de entrada y registro de rutas
-├── controllers/                # Lógica de cada recurso (CRUD)
+├── app.js                      # Entrada, middlewares globales y rutas
+├── controllers/                # Controladores HTTP
 ├── db/
 │   ├── database.js             # Conexión Sequelize (PostgreSQL)
 │   ├── postgres/
 │   │   ├── schema.sql          # Esquema PostgreSQL (16 tablas)
 │   │   └── seed.sql            # Datos iniciales
 │   └── legacy/
-│       └── scrip-sistema-vuelos.sql  # Dump MySQL original (referencia)
+│       └── scrip-sistema-vuelos.sql  # Dump MySQL original
+├── lib/
+│   ├── async-handler.js        # Envoltura para errores async
+│   ├── contexto.js             # AsyncLocalStorage (usuario/IP por request)
+│   └── errores.js              # ErrorConEstado
 ├── middlewares/
-│   └── auth.middleware.js      # verificarToken y permitirRoles
-├── models/                     # Modelos Sequelize y asociaciones
-├── routes/                     # Definición de endpoints REST
-├── scripts/
-│   └── init-db.js              # Ejecuta schema.sql + seed.sql
-├── .env.example                # Plantilla de variables de entorno
+│   ├── auth.middleware.js      # verificarToken y permitirRoles
+│   ├── contexto.middleware.js  # Contexto de auditoría
+│   ├── error.middleware.js     # Manejo central de errores
+│   └── validar.middleware.js   # Validación con Zod
+├── models/                     # Modelos y asociaciones
+│   ├── auditoria.hooks.js      # Auditoría automática
+│   └── index.js                # Carga de modelos y hooks
+├── routes/                     # Endpoints REST
+├── services/                   # Lógica de negocio y transacciones
+├── tests/
+│   └── api.v1.1.0.js           # Pruebas de integración
+├── validators/
+│   └── schemas.js              # Esquemas Zod
+├── .env.example
 └── package.json
 ```
 
@@ -85,12 +115,10 @@ npm install
 cp .env.example .env
 ```
 
-Edita `.env` según tu proveedor.
-
 #### Opción A — Neon (recomendado)
 
 1. Crea un proyecto en [neon.tech](https://neon.tech).
-2. En **Project → Connect**, copia la cadena de conexión.
+2. Copia la cadena de conexión desde **Project → Connect**.
 3. Configura:
 
 ```env
@@ -100,7 +128,7 @@ JWT_SECRET=<un_secreto_largo_y_aleatorio>
 PORT=3000
 ```
 
-> Las credenciales de Neon las genera cada equipo desde su propia cuenta. **No se suben al repositorio.**
+> Las credenciales las genera cada equipo desde su cuenta. **No se suben al repositorio.**
 
 #### Opción B — PostgreSQL local
 
@@ -116,8 +144,6 @@ JWT_SECRET=<un_secreto_largo_y_aleatorio>
 PORT=3000
 ```
 
-Crea la base de datos antes de continuar:
-
 ```bash
 createdb -U postgres aeropuerto_db
 ```
@@ -128,8 +154,6 @@ createdb -U postgres aeropuerto_db
 npm run db:init
 ```
 
-Este comando ejecuta `db/postgres/schema.sql` y `db/postgres/seed.sql`. Es **idempotente**: elimina y vuelve a crear las tablas cada vez que se ejecuta.
-
 Salida esperada:
 
 ```
@@ -139,11 +163,7 @@ Base de datos inicializada correctamente.
 Puertas: 25 | Vuelos: 12 | Pasajeros: 6 | Equipajes: 8 | Notificaciones: 12
 ```
 
-> Alternativa con `psql`:
-> ```bash
-> psql "$DATABASE_URL" -f db/postgres/schema.sql
-> psql "$DATABASE_URL" -f db/postgres/seed.sql
-> ```
+> El script es **idempotente**: elimina y vuelve a crear las tablas en cada ejecución.
 
 ### 4. Ejecutar el servidor
 
@@ -152,14 +172,17 @@ npm run dev     # con nodemon
 npm start       # producción
 ```
 
-La API queda disponible en `http://localhost:3000`.
+La API queda en `http://localhost:3000`.
 
-Comprueba el arranque:
+### 5. Ejecutar las pruebas de integración
+
+Con el servidor levantado y una base recién inicializada:
 
 ```bash
-curl http://localhost:3000/
-# {"mensaje":"API del Sistema de Vuelos funcionando correctamente"}
+npm run test:api
 ```
+
+El script crea y modifica datos; usa una base de pruebas o vuelve a ejecutar `npm run db:init` al terminar.
 
 ---
 
@@ -167,18 +190,18 @@ curl http://localhost:3000/
 
 | Variable | Obligatoria | Descripción |
 |---|---|---|
-| `DATABASE_URL` | Sí (Neon) | Cadena de conexión completa de PostgreSQL. Tiene prioridad sobre las variables individuales. |
+| `DATABASE_URL` | Sí (Neon) | Cadena de conexión completa; tiene prioridad sobre las variables individuales. |
 | `DB_SSL` | Recomendada | `true` para Neon/nube, `false` para local. |
 | `DB_NAME` | Sí (local) | Nombre de la base de datos. |
 | `DB_USER` | Sí (local) | Usuario de PostgreSQL. |
-| `DB_PASSWORD` | Sí (local) | Contraseña de PostgreSQL. |
-| `DB_HOST` | No | Host de la base de datos (por defecto `localhost`). |
-| `DB_PORT` | No | Puerto de PostgreSQL (por defecto `5432`). |
-| `JWT_SECRET` | Sí | Secreto para firmar los tokens JWT. |
+| `DB_PASSWORD` | Sí (local) | Contraseña. |
+| `DB_HOST` | No | Host (por defecto `localhost`). |
+| `DB_PORT` | No | Puerto (por defecto `5432`). |
+| `JWT_SECRET` | Sí | Secreto para firmar los tokens. |
 | `JWT_EXPIRES_IN` | No | Duración del token (por defecto `8h`). |
 | `PORT` | No | Puerto del servidor (por defecto `3000`). |
 
-Genera un `JWT_SECRET` seguro con:
+Genera un secreto seguro:
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
@@ -209,29 +232,111 @@ node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 | `historial_equipaje` | 16 |
 | `auditoria` | 7 |
 
-### Migración de MySQL a PostgreSQL (v1.0.0)
+### Reglas a nivel de base de datos
 
-El dump original `db/legacy/scrip-sistema-vuelos.sql` fue convertido preservando esquema, relaciones, restricciones y datos:
+- **Una puerta, un vuelo a la vez:** restricción de exclusión `no_solape_puerta`:
+
+  ```sql
+  EXCLUDE USING gist (
+    id_puerta WITH =,
+    tsrange(fecha_salida + hora_salida,
+            fecha_llegada + hora_llegada, '[)') WITH &&
+  )
+  WHERE (id_puerta IS NOT NULL AND estado <> 'CANCELADO');
+  ```
+
+  Requiere la extensión `btree_gist`. Protege incluso ante inserciones concurrentes.
+
+- **Vínculo usuario–pasajero:** `usuarios.id_pasajero` es único y referencia a `pasajeros`.
+- **Integridad referencial:** FKs con `ON DELETE RESTRICT/SET NULL` y `ON UPDATE CASCADE`.
+- **Timestamps:** `updated_at` se actualiza con el trigger `set_updated_at()`.
+
+### Migración de MySQL a PostgreSQL
 
 | MySQL | PostgreSQL |
 |---|---|
-| `ENUM(...)` | Tipos ENUM nativos (`estado_vuelo`, `tipo_notificacion`, etc.) |
+| `ENUM(...)` | Tipos ENUM nativos |
 | `AUTO_INCREMENT` | `GENERATED BY DEFAULT AS IDENTITY` |
 | `TINYINT(1)` | `BOOLEAN` |
-| `DATETIME` / `TIMESTAMP` | `TIMESTAMPTZ` (valores interpretados en UTC) |
+| `DATETIME` / `TIMESTAMP` | `TIMESTAMPTZ` (UTC) |
 | `ON UPDATE CURRENT_TIMESTAMP` | Trigger `set_updated_at()` |
-| Índices implícitos de FK | Índices explícitos (`*_idx`) |
+| Índices implícitos de FK | Índices explícitos |
 | `CHECK` de fechas, capacidad y peso | Restricciones `CHECK` equivalentes |
-| `ON DELETE SET NULL / RESTRICT` | Mismas acciones referenciales |
+| Sin regla de solape | `EXCLUDE USING gist` (v1.1.0) |
 
-La secuencia de cada tabla se reajusta al final del seed (`setval`) para que los nuevos registros continúen después del último ID insertado.
+Las secuencias se reajustan al final del seed (`setval`) para continuar después del último ID.
 
-### Modelo de entidades
+---
 
-- **Catálogos:** `roles`, `aeropuertos`, `puertas`, `bandas_equipaje`.
-- **Operación:** `vuelos`, `itinerarios`, `escalas`, `pasajero_vuelo`, `equipaje_vuelo`.
-- **Personas y equipaje:** `usuarios`, `pasajeros`, `equipajes`.
-- **Notificaciones y trazabilidad:** `notificaciones`, `historial_vuelo`, `historial_equipaje`, `auditoria`.
+## Seguridad y roles
+
+Todas las rutas bajo `/api` requieren `Authorization: Bearer <token>`, excepto `POST /api/auth/login`. El endpoint raíz `GET /` es público.
+
+| Rol | Permisos |
+|---|---|
+| `ADMINISTRADOR` | Acceso completo, incluidos usuarios, roles y auditoría. Puede eliminar registros. |
+| `SECRETARIO` | Operación diaria: vuelos, pasajeros, equipajes, itinerarios, escalas, puertas, bandas, notificaciones e historiales. No gestiona usuarios, roles ni auditoría. |
+| `PASAJERO` | Consulta de vuelos, sus propios vuelos, equipajes y notificaciones. Puede marcar sus notificaciones como leídas. |
+
+Además:
+
+- **Validación estricta** con Zod: rechaza campos desconocidos y datos fuera de rango.
+- **Contraseñas** con bcrypt y tokens JWT con expiración.
+- **Errores centralizados:** no se filtran mensajes internos de la base de datos.
+- **Auditoría inmutable:** no existen endpoints `DELETE` para auditoría ni historiales.
+- **Contexto por request** con `AsyncLocalStorage` para registrar usuario e IP en la auditoría.
+
+---
+
+## Reglas de negocio
+
+### Vuelos
+
+- Todo vuelo se crea en `PROGRAMADO`.
+- Transiciones permitidas:
+
+  ```
+  PROGRAMADO → ABORDANDO | RETRASADO | CANCELADO
+  RETRASADO  → PROGRAMADO | ABORDANDO | CANCELADO
+  ABORDANDO  → ABORDADO | RETRASADO | CANCELADO
+  ABORDADO   → EN_VUELO | RETRASADO
+  EN_VUELO   → ATERRIZADO
+  ATERRIZADO → FINALIZADO
+  FINALIZADO → (final)
+  CANCELADO  → (final)
+  ```
+
+- Reprogramar exige fechas/horas coherentes y vuelve a validar la puerta.
+- Cancelar exige motivo, registra historial, notifica a los pasajeros y marca sus asignaciones como `CANCELADO`.
+- No se puede modificar un vuelo `CANCELADO` o `FINALIZADO` sin cambiar de estado.
+- Un vuelo con historial o dependencias no se puede eliminar (HTTP 409).
+
+### Equipaje
+
+- Estados: `REGISTRADO`, `EN_TRANSITO`, `EN_BANDA`, `CARGADO`, `TRANSFERIDO`, `ENTREGADO`, `EXTRAVIADO`, `DANADO`.
+- Transiciones validadas (por ejemplo, `ENTREGADO` es final).
+- **Conexión sin retiro:** el segundo tramo debe iniciar en el aeropuerto donde termina el tramo anterior.
+- Asignar banda exige que esté `DISPONIBLE`; genera notificación `BANDA_EQUIPAJE`.
+- Las incidencias (`EXTRAVIADO`, `DANADO`, `ENTREGADO`) notifican al pasajero.
+
+### Notificaciones
+
+Se generan automáticamente en:
+
+- Asignación o cambio de puerta (`PUERTA_ASIGNADA`, `CAMBIO_PUERTA`).
+- Cambio de horario (`CAMBIO_HORARIO`).
+- Retraso (`VUELO_RETRASADO`).
+- Cancelación (`VUELO_CANCELADO`).
+- Conexión de equipaje (`ESCALA`).
+- Banda de equipaje (`BANDA_EQUIPAJE`).
+- Incidencias y entrega (`INFORMACION_GENERAL`).
+
+### Historial y auditoría
+
+- **Historial de vuelo:** una fila por campo modificado (valor anterior y nuevo, motivo y usuario).
+- **Historial de equipaje:** cada movimiento (tramo, banda, estado).
+- **Auditoría:** hooks de Sequelize registran `CREAR`, `ACTUALIZAR` y `ELIMINAR` de las entidades de negocio, con usuario, IP y campos modificados. Se excluyen notificaciones, historiales y la propia auditoría para evitar ruido y recursión.
+- El login exitoso también queda auditado.
 
 ---
 
@@ -255,31 +360,20 @@ Respuesta:
   "usuario": {
     "id_usuario": 1,
     "nombre_usuario": "admin",
+    "id_pasajero": null,
     "rol": { "id_rol": 1, "nombre": "ADMINISTRADOR" }
   }
 }
 ```
 
-Para rutas protegidas:
+Usa el token en las demás rutas:
 
 ```bash
 curl http://localhost:3000/api/auth/me \
   -H "Authorization: Bearer <jwt>"
 ```
 
-### Recursos
-
-Todos los recursos exponen el CRUD estándar:
-
-| Método | Ruta | Descripción |
-|---|---|---|
-| `GET` | `/{recurso}` | Listar |
-| `GET` | `/{recurso}/:id` | Obtener por ID |
-| `POST` | `/{recurso}` | Crear |
-| `PUT` | `/{recurso}/:id` | Actualizar |
-| `DELETE` | `/{recurso}/:id` | Eliminar |
-
-Recursos disponibles:
+### Recursos con CRUD
 
 | Recurso | Ruta base |
 |---|---|
@@ -296,33 +390,72 @@ Recursos disponibles:
 | Equipajes | `/api/equipajes` |
 | Equipaje–vuelo | `/api/equipaje-vuelo` |
 | Notificaciones | `/api/notificaciones` |
-| Historial de vuelo | `/api/historial-vuelo` |
-| Historial de equipaje | `/api/historial-equipaje` |
-| Auditoría | `/api/auditoria` |
+| Historial de vuelo | `/api/historial-vuelo` (sin DELETE) |
+| Historial de equipaje | `/api/historial-equipaje` (sin DELETE) |
+| Auditoría | `/api/auditoria` (solo lectura) |
 
-Endpoints adicionales:
+Cada recurso expone `GET /`, `GET /:id`, `POST /`, `PUT /:id` y, cuando aplica, `DELETE /:id`.
 
-| Método | Ruta | Descripción |
-|---|---|---|
-| `GET` | `/api/auth/me` | Usuario autenticado (requiere JWT) |
-| `GET` | `/api/auditoria/usuario/:idUsuario` | Auditoría de un usuario |
-| `GET` | `/api/historial-vuelo/vuelo/:idVuelo` | Historial de un vuelo |
-| `GET` | `/api/historial-equipaje/equipaje/:idEquipaje` | Historial de un equipaje |
+### Endpoints de negocio
 
-### Usuarios de prueba
-
-Datos sembrados **solo para desarrollo**. Cámbialos antes de desplegar en producción.
-
-| Usuario | Contraseña | Rol | Estado |
+| Método | Ruta | Rol | Descripción |
 |---|---|---|---|
-| `admin` | `Admin123!` | ADMINISTRADOR | ACTIVO |
-| `secretario` | `Secretario123!` | SECRETARIO | ACTIVO |
-| `carlos` | `Pasajero123!` | PASAJERO | ACTIVO |
-| `sofia` | `Pasajero123!` | PASAJERO | ACTIVO |
-| `andrea` | `Pasajero123!` | PASAJERO | ACTIVO |
-| `inactivo` | `Pasajero123!` | PASAJERO | INACTIVO |
+| `GET` | `/api/vuelos/mios` | PASAJERO | Vuelos del pasajero autenticado. |
+| `PATCH` | `/api/vuelos/:id/estado` | ADMIN, SECRETARIO | Cambia el estado validando transiciones. |
+| `PATCH` | `/api/vuelos/:id/reprogramar` | ADMIN, SECRETARIO | Cambia fecha/hora con validación de puerta. |
+| `PATCH` | `/api/vuelos/:id/puerta` | ADMIN, SECRETARIO | Asigna o cambia puerta. |
+| `POST` | `/api/vuelos/:id/cancelar` | ADMIN, SECRETARIO | Cancela con motivo obligatorio. |
+| `GET` | `/api/equipajes/mios` | PASAJERO | Equipajes del pasajero autenticado. |
+| `POST` | `/api/equipajes/:id/tramos` | ADMIN, SECRETARIO | Registra un tramo/conexión. |
+| `PATCH` | `/api/equipajes/:id/banda` | ADMIN, SECRETARIO | Asigna banda de entrega. |
+| `PATCH` | `/api/equipajes/:id/estado` | ADMIN, SECRETARIO | Cambia estado con validación. |
+| `GET` | `/api/notificaciones/mias` | PASAJERO | Notificaciones propias. |
+| `PATCH` | `/api/notificaciones/mias/leer-todas` | PASAJERO | Marca todas como leídas. |
+| `PATCH` | `/api/notificaciones/:id/leer` | Todos | Marca una notificación como leída (el pasajero solo las suyas). |
+| `GET` | `/api/auditoria/usuario/:idUsuario` | ADMIN | Auditoría de un usuario. |
+| `GET` | `/api/historial-vuelo/vuelo/:idVuelo` | ADMIN, SECRETARIO | Historial de un vuelo. |
+| `GET` | `/api/historial-equipaje/equipaje/:idEquipaje` | ADMIN, SECRETARIO | Historial de un equipaje. |
 
-> `inactivo` sirve para probar que el login rechaza usuarios deshabilitados (HTTP 403).
+### Ejemplos
+
+Reprogramar un vuelo:
+
+```bash
+curl -X PATCH http://localhost:3000/api/vuelos/3/reprogramar \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fecha_salida": "2026-10-03",
+    "hora_salida": "19:00",
+    "fecha_llegada": "2026-10-04",
+    "hora_llegada": "12:00",
+    "motivo": "Ajuste operativo"
+  }'
+```
+
+Registrar una conexión de equipaje:
+
+```bash
+curl -X POST http://localhost:3000/api/equipajes/2/tramos \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{ "id_vuelo": 11 }'
+```
+
+---
+
+## Usuarios de prueba
+
+Datos sembrados **solo para desarrollo**. Cámbialos antes de desplegar.
+
+| Usuario | Contraseña | Rol | Pasajero vinculado |
+|---|---|---|---|
+| `admin` | `Admin123!` | ADMINISTRADOR | — |
+| `secretario` | `Secretario123!` | SECRETARIO | — |
+| `carlos` | `Pasajero123!` | PASAJERO | 1 (Carlos Martinez) |
+| `sofia` | `Pasajero123!` | PASAJERO | 2 (Sofia Ramirez) |
+| `andrea` | `Pasajero123!` | PASAJERO | 3 (Andrea Lopez) |
+| `inactivo` | `Pasajero123!` | PASAJERO | — (login rechazado con 403) |
 
 ---
 
@@ -333,7 +466,7 @@ Datos sembrados **solo para desarrollo**. Cámbialos antes de desplegar en produ
 | `npm start` | Inicia el servidor. |
 | `npm run dev` | Inicia con recarga automática (nodemon). |
 | `npm run db:init` | Crea el esquema y carga los datos iniciales. |
-| `npm test` | Reservado (aún no hay pruebas). |
+| `npm run test:api` | Ejecuta las pruebas de integración v1.1.0 (56 verificaciones). |
 
 ---
 
@@ -341,16 +474,14 @@ Datos sembrados **solo para desarrollo**. Cámbialos antes de desplegar en produ
 
 - `main`: versión estable.
 - `juanjo`, `Demy`: ramas de desarrollo.
-- Cada módulo se desarrolla en una rama y se integra mediante **Pull Request**.
+- `feature/v1.1.0`: rama de esta versión.
+- Cada módulo se integra mediante **Pull Request**.
 - Versionado semántico (`MAJOR.MINOR.PATCH`).
 
-Este repositorio inicia su versionado con el PR **v1.0.0**, que incluye:
-
-- Migración completa de MySQL a PostgreSQL.
-- Scripts de esquema y datos iniciales.
-- Configuración de conexión para Neon/local.
-- Documentación del proyecto.
-- Dependencias actualizadas (`pg`, `pg-hstore`; se retiró `mysql2`).
+| Versión | Contenido |
+|---|---|
+| `v1.0.0` | Backend base y migración a PostgreSQL. |
+| `v1.1.0` | Seguridad, validaciones, lógica de negocio, notificaciones, historial y auditoría automáticos. |
 
 ### Convención de commits
 
@@ -359,24 +490,21 @@ feat: nueva funcionalidad
 fix: corrección de error
 docs: documentación
 refactor: reorganización sin cambio funcional
+test: pruebas
 chore: tareas de mantenimiento
 ```
 
 ---
 
-## Limitaciones conocidas de v1.0.0
+## Limitaciones conocidas de v1.1.0
 
-Esta versión es la **base del backend**. Todavía no incluye:
-
-- Protección de las rutas CRUD (solo `/api/auth/me` valida el token).
-- Generación automática de notificaciones, historial y auditoría.
-- Validación de conflictos de puerta al **actualizar** un vuelo.
-- Panel gráfico, WebSocket/SSE y frontend.
-- Mensajería asíncrona (RabbitMQ/Kafka).
-- Reportes, exportación a Excel/PDF e integración con Power BI.
-- Agente de IA y RAG.
-- Pruebas automatizadas.
-- Despliegue en producción.
+- Sin frontend ni panel gráfico en tiempo real.
+- Sin mensajería asíncrona (RabbitMQ/Kafka): las notificaciones se guardan en la base, todavía no se envían por correo/push.
+- Sin reportes exportables a Excel/PDF ni integración con Power BI.
+- Sin agente de IA ni RAG.
+- Sin despliegue del backend en la nube (la base ya puede estar en Neon).
+- Pruebas de integración únicamente; no hay pruebas unitarias.
+- Sin refresh tokens, bloqueo por intentos fallidos ni rate limiting.
 
 ---
 
@@ -384,10 +512,9 @@ Esta versión es la **base del backend**. Todavía no incluye:
 
 | Versión | Alcance |
 |---|---|
-| **v1.0.0** | Backend base + migración a PostgreSQL + documentación. |
-| v1.1.0 | Protección de rutas por rol, validaciones, transacciones y lógica de negocio (puertas, estados, equipaje en conexión). |
-| v1.2.0 | Notificaciones automáticas, panel gráfico en tiempo real y frontend. |
-| v1.3.0 | RabbitMQ/Kafka, 15 reportes con Excel/PDF, Power BI, agente de IA + RAG y despliegue. |
+| **v1.1.0** | Seguridad, validaciones, máquina de estados, conflicto de puertas, equipaje en conexión, notificaciones, historial y auditoría. |
+| v1.2.0 | Panel gráfico en tiempo real (25 puertas), frontend y WebSocket/SSE. |
+| v1.3.0 | RabbitMQ/Kafka, 15 reportes con Excel/PDF, Power BI, agente de IA + RAG y despliegue en producción. |
 
 ---
 

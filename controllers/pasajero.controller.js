@@ -7,9 +7,9 @@ const obtenerPasajeros = async (req, res) => {
 
     res.status(200).json(pasajeros);
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al obtener los pasajeros',
-      error: error.message,
     });
   }
 };
@@ -29,9 +29,9 @@ const obtenerPasajeroPorId = async (req, res) => {
 
     res.status(200).json(pasajero);
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al obtener el pasajero',
-      error: error.message,
     });
   }
 };
@@ -72,9 +72,9 @@ const crearPasajero = async (req, res) => {
       pasajero: nuevoPasajero,
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al crear el pasajero',
-      error: error.message,
     });
   }
 };
@@ -128,9 +128,9 @@ const actualizarPasajero = async (req, res) => {
       pasajero,
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al actualizar el pasajero',
-      error: error.message,
     });
   }
 };
@@ -154,9 +154,9 @@ const eliminarPasajero = async (req, res) => {
       mensaje: 'Pasajero eliminado correctamente',
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al eliminar el pasajero',
-      error: error.message,
     });
   }
 };

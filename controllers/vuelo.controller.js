@@ -1,303 +1,170 @@
-const { Op } = require('sequelize');
-
 const Vuelo = require('../models/vuelo.model');
 const Aeropuerto = require('../models/aeropuerto.model');
 const Puerta = require('../models/puerta.model');
 
+const asyncHandler = require('../lib/async-handler');
+const { ErrorConEstado } = require('../lib/errores');
+const {
+  crearVuelo: crearVueloService,
+  actualizarVuelo: actualizarVueloService,
+  cambiarEstadoVuelo,
+  reprogramarVuelo,
+  cambiarPuertaVuelo,
+  cancelarVuelo,
+  obtenerVuelosDePasajero,
+} = require('../services/vuelo.service');
 
-// Obtener todos los vuelos
-const obtenerVuelos = async (req, res) => {
-  try {
-    const vuelos = await Vuelo.findAll({
-      include: [
-        {
-          model: Aeropuerto,
-          as: 'aeropuerto_origen',
-        },
-        {
-          model: Aeropuerto,
-          as: 'aeropuerto_destino',
-        },
-        {
-          model: Puerta,
-          as: 'puerta',
-        },
-      ],
-    });
+const INCLUDE_VUELO = [
+  { model: Aeropuerto, as: 'aeropuerto_origen' },
+  { model: Aeropuerto, as: 'aeropuerto_destino' },
+  { model: Puerta, as: 'puerta' },
+];
 
-    res.status(200).json(vuelos);
-  } catch (error) {
-    res.status(500).json({
-      mensaje: 'Error al obtener los vuelos',
-      error: error.message,
-    });
-  }
-};
-
-
-// Obtener vuelo por ID
-const obtenerVueloPorId = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const vuelo = await Vuelo.findByPk(id, {
-      include: [
-        {
-          model: Aeropuerto,
-          as: 'aeropuerto_origen',
-        },
-        {
-          model: Aeropuerto,
-          as: 'aeropuerto_destino',
-        },
-        {
-          model: Puerta,
-          as: 'puerta',
-        },
-      ],
-    });
-
-    if (!vuelo) {
-      return res.status(404).json({
-        mensaje: 'Vuelo no encontrado',
-      });
-    }
-
-    res.status(200).json(vuelo);
-  } catch (error) {
-    res.status(500).json({
-      mensaje: 'Error al obtener el vuelo',
-      error: error.message,
-    });
-  }
-};
-
-
-// Crear vuelo
-const crearVuelo = async (req, res) => {
-  try {
-    const {
-      codigo_vuelo,
-      id_aeropuerto_origen,
-      id_aeropuerto_destino,
-      fecha_salida,
-      hora_salida,
-      fecha_llegada,
-      hora_llegada,
-      id_puerta,
-      capacidad_pasajeros,
-      observaciones,
-    } = req.body;
-
-    if (
-      !codigo_vuelo ||
-      !id_aeropuerto_origen ||
-      !id_aeropuerto_destino ||
-      !fecha_salida ||
-      !hora_salida ||
-      !fecha_llegada ||
-      !hora_llegada
-    ) {
-      return res.status(400).json({
-        mensaje: 'Faltan datos obligatorios del vuelo',
-      });
-    }
-
-    if (id_aeropuerto_origen === id_aeropuerto_destino) {
-      return res.status(400).json({
-        mensaje: 'El aeropuerto de origen y destino no pueden ser el mismo',
-      });
-    }
-
-    const origen = await Aeropuerto.findByPk(id_aeropuerto_origen);
-    const destino = await Aeropuerto.findByPk(id_aeropuerto_destino);
-
-    if (!origen || !destino) {
-      return res.status(400).json({
-        mensaje: 'El aeropuerto de origen o destino no existe',
-      });
-    }
-
-    const salida = new Date(`${fecha_salida}T${hora_salida}`);
-    const llegada = new Date(`${fecha_llegada}T${hora_llegada}`);
-
-    if (llegada <= salida) {
-      return res.status(400).json({
-        mensaje: 'La fecha y hora de llegada deben ser posteriores a la salida',
-      });
-    }
-
-    if (capacidad_pasajeros !== undefined && capacidad_pasajeros < 0) {
-      return res.status(400).json({
-        mensaje: 'La capacidad de pasajeros no puede ser negativa',
-      });
-    }
-
-    if (id_puerta) {
-      const puerta = await Puerta.findByPk(id_puerta);
-
-      if (!puerta) {
-        return res.status(400).json({
-          mensaje: 'La puerta seleccionada no existe',
-        });
-      }
-
-      if (puerta.estado !== 'DISPONIBLE') {
-        return res.status(400).json({
-          mensaje: 'La puerta seleccionada no está disponible',
-        });
-      }
-
-      const conflicto = await Vuelo.findOne({
-        where: {
-          id_puerta,
-          estado: {
-            [Op.ne]: 'CANCELADO',
-          },
-          [Op.and]: [
-            sequelizeWhereFechaHoraMenor(fecha_llegada, hora_llegada),
-            sequelizeWhereFechaHoraMayor(fecha_salida, hora_salida),
-          ],
-        },
-      });
-
-      if (conflicto) {
-        return res.status(409).json({
-          mensaje: 'La puerta ya está asignada a otro vuelo en ese horario',
-        });
-      }
-    }
-
-    const nuevoVuelo = await Vuelo.create({
-      codigo_vuelo,
-      id_aeropuerto_origen,
-      id_aeropuerto_destino,
-      fecha_salida,
-      hora_salida,
-      fecha_llegada,
-      hora_llegada,
-      id_puerta,
-      estado: 'PROGRAMADO',
-      capacidad_pasajeros,
-      observaciones,
-    });
-
-    res.status(201).json({
-      mensaje: 'Vuelo creado correctamente',
-      vuelo: nuevoVuelo,
-    });
-  } catch (error) {
-    res.status(500).json({
-      mensaje: 'Error al crear el vuelo',
-      error: error.message,
-    });
-  }
-};
-
-
-// Funciones para comprobar traslapes de horarios
-const sequelizeWhereFechaHoraMenor = (fechaLlegada, horaLlegada) => ({
-  [Op.or]: [
-    {
-      fecha_salida: {
-        [Op.lt]: fechaLlegada,
-      },
-    },
-    {
-      fecha_salida: fechaLlegada,
-      hora_salida: {
-        [Op.lt]: horaLlegada,
-      },
-    },
-  ],
+const contextoDe = (req) => ({
+  idUsuario: req.usuario?.id_usuario || null,
+  ip: req.ip,
 });
 
-const sequelizeWhereFechaHoraMayor = (fechaSalida, horaSalida) => ({
-  [Op.or]: [
-    {
-      fecha_llegada: {
-        [Op.gt]: fechaSalida,
-      },
-    },
-    {
-      fecha_llegada: fechaSalida,
-      hora_llegada: {
-        [Op.gt]: horaSalida,
-      },
-    },
-  ],
+const obtenerVuelos = asyncHandler(async (req, res) => {
+  const vuelos = await Vuelo.findAll({
+    include: INCLUDE_VUELO,
+    order: [
+      ['fecha_salida', 'ASC'],
+      ['hora_salida', 'ASC'],
+    ],
+  });
+
+  res.status(200).json(vuelos);
 });
 
+const obtenerVueloPorId = asyncHandler(async (req, res) => {
+  const vuelo = await Vuelo.findByPk(req.params.id, {
+    include: INCLUDE_VUELO,
+  });
 
-// Actualizar vuelo
-const actualizarVuelo = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const vuelo = await Vuelo.findByPk(id);
-
-    if (!vuelo) {
-      return res.status(404).json({
-        mensaje: 'Vuelo no encontrado',
-      });
-    }
-
-    const datosActualizar = { ...req.body };
-
-    // Todos los vuelos se crean PROGRAMADOS.
-    // Después sí pueden cambiar de estado.
-    if (datosActualizar.capacidad_pasajeros < 0) {
-      return res.status(400).json({
-        mensaje: 'La capacidad de pasajeros no puede ser negativa',
-      });
-    }
-
-    await vuelo.update(datosActualizar);
-
-    res.status(200).json({
-      mensaje: 'Vuelo actualizado correctamente',
-      vuelo,
-    });
-  } catch (error) {
-    res.status(500).json({
-      mensaje: 'Error al actualizar el vuelo',
-      error: error.message,
-    });
+  if (!vuelo) {
+    throw new ErrorConEstado(404, 'Vuelo no encontrado');
   }
-};
 
+  res.status(200).json(vuelo);
+});
 
-// Eliminar vuelo
-const eliminarVuelo = async (req, res) => {
-  try {
-    const { id } = req.params;
+const crearVuelo = asyncHandler(async (req, res) => {
+  const vuelo = await crearVueloService(req.body, contextoDe(req));
 
-    const vuelo = await Vuelo.findByPk(id);
+  res.status(201).json({
+    mensaje: 'Vuelo creado correctamente',
+    vuelo,
+  });
+});
 
-    if (!vuelo) {
-      return res.status(404).json({
-        mensaje: 'Vuelo no encontrado',
-      });
-    }
+const actualizarVuelo = asyncHandler(async (req, res) => {
+  const { vuelo, cambios } = await actualizarVueloService({
+    idVuelo: req.params.id,
+    datos: req.body,
+    motivo: req.body.motivo,
+    contexto: contextoDe(req),
+  });
 
-    await vuelo.destroy();
+  res.status(200).json({
+    mensaje: 'Vuelo actualizado correctamente',
+    vuelo,
+    cambios: Object.keys(cambios),
+  });
+});
 
-    res.status(200).json({
-      mensaje: 'Vuelo eliminado correctamente',
-    });
-  } catch (error) {
-    res.status(500).json({
-      mensaje: 'Error al eliminar el vuelo',
-      error: error.message,
-    });
+const cambiarEstado = asyncHandler(async (req, res) => {
+  const { vuelo, cambios } = await cambiarEstadoVuelo(
+    req.params.id,
+    req.body,
+    contextoDe(req)
+  );
+
+  res.status(200).json({
+    mensaje: 'Estado del vuelo actualizado correctamente',
+    vuelo,
+    cambios: Object.keys(cambios),
+  });
+});
+
+const reprogramar = asyncHandler(async (req, res) => {
+  const { vuelo, cambios } = await reprogramarVuelo(
+    req.params.id,
+    req.body,
+    contextoDe(req)
+  );
+
+  res.status(200).json({
+    mensaje: 'Vuelo reprogramado correctamente',
+    vuelo,
+    cambios: Object.keys(cambios),
+  });
+});
+
+const cambiarPuerta = asyncHandler(async (req, res) => {
+  const { vuelo, cambios } = await cambiarPuertaVuelo(
+    req.params.id,
+    req.body,
+    contextoDe(req)
+  );
+
+  res.status(200).json({
+    mensaje: 'Puerta del vuelo actualizada correctamente',
+    vuelo,
+    cambios: Object.keys(cambios),
+  });
+});
+
+const cancelar = asyncHandler(async (req, res) => {
+  const { vuelo, cambios } = await cancelarVuelo(
+    req.params.id,
+    req.body,
+    contextoDe(req)
+  );
+
+  res.status(200).json({
+    mensaje: 'Vuelo cancelado correctamente',
+    vuelo,
+    cambios: Object.keys(cambios),
+  });
+});
+
+const eliminarVuelo = asyncHandler(async (req, res) => {
+  const vuelo = await Vuelo.findByPk(req.params.id);
+
+  if (!vuelo) {
+    throw new ErrorConEstado(404, 'Vuelo no encontrado');
   }
-};
 
+  await vuelo.destroy();
+
+  res.status(200).json({
+    mensaje: 'Vuelo eliminado correctamente',
+  });
+});
+
+const obtenerMisVuelos = asyncHandler(async (req, res) => {
+  if (!req.usuario?.id_pasajero) {
+    throw new ErrorConEstado(
+      400,
+      'El usuario no está vinculado a una ficha de pasajero'
+    );
+  }
+
+  const vuelos = await obtenerVuelosDePasajero(req.usuario.id_pasajero);
+
+  res.status(200).json(vuelos);
+});
 
 module.exports = {
   obtenerVuelos,
   obtenerVueloPorId,
   crearVuelo,
   actualizarVuelo,
+  cambiarEstado,
+  reprogramar,
+  cambiarPuerta,
+  cancelar,
   eliminarVuelo,
+  obtenerMisVuelos,
 };

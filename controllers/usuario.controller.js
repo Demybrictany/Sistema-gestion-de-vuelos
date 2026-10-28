@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const Usuario = require('../models/usuario.model');
 const Rol = require('../models/rol.model');
+const Pasajero = require('../models/pasajero.model');
 
 const SALT_ROUNDS = 10;
 const CAMPOS_USUARIO_SEGUROS = { exclude: ['password_hash'] };
@@ -11,9 +12,28 @@ const INCLUDE_ROL = {
 };
 
 const responderError = (res, mensaje, error) => {
+  const codigo = error.parent?.code || error.original?.code;
+
+  if (error.name === 'SequelizeUniqueConstraintError' || codigo === '23505') {
+    return res.status(409).json({
+      mensaje: 'Ya existe un registro con esos datos',
+    });
+  }
+
+  if (
+    error.name === 'SequelizeForeignKeyConstraintError' ||
+    codigo === '23503' ||
+    codigo === '23001'
+  ) {
+    return res.status(409).json({
+      mensaje: 'El registro está siendo utilizado por otros datos',
+    });
+  }
+
+  console.error(error);
+
   return res.status(500).json({
     mensaje,
-    error: error.message,
   });
 };
 
@@ -28,6 +48,23 @@ const validarRol = async (idRol) => {
 
   const rol = await Rol.findByPk(idRol);
   return Boolean(rol);
+};
+
+const validarPasajero = async (idPasajero) => {
+  if (!idPasajero) return true;
+
+  const pasajero = await Pasajero.findByPk(idPasajero);
+  return Boolean(pasajero);
+};
+
+const pasajeroSinVincular = async (idPasajero, idUsuarioExcluir = null) => {
+  if (!idPasajero) return true;
+
+  const existente = await Usuario.findOne({
+    where: { id_pasajero: idPasajero },
+  });
+
+  return !existente || existente.id_usuario === idUsuarioExcluir;
 };
 
 const quitarPassword = (usuario) => {
@@ -46,6 +83,7 @@ const obtenerUsuarios = async (req, res) => {
 
     return res.status(200).json(usuarios);
   } catch (error) {
+    console.error(error);
     return responderError(res, 'Error al obtener los usuarios', error);
   }
 };
@@ -67,6 +105,7 @@ const obtenerUsuarioPorId = async (req, res) => {
 
     return res.status(200).json(usuario);
   } catch (error) {
+    console.error(error);
     return responderError(res, 'Error al obtener el usuario', error);
   }
 };
@@ -81,6 +120,7 @@ const crearUsuario = async (req, res) => {
       apellidos,
       correo,
       telefono,
+      id_pasajero,
     } = req.body;
 
     const camposObligatorios = [
@@ -105,6 +145,20 @@ const crearUsuario = async (req, res) => {
       });
     }
 
+    const pasajeroExiste = await validarPasajero(id_pasajero);
+    if (!pasajeroExiste) {
+      return res.status(400).json({
+        mensaje: 'El pasajero vinculado no existe',
+      });
+    }
+
+    const pasajeroLibre = await pasajeroSinVincular(id_pasajero);
+    if (!pasajeroLibre) {
+      return res.status(409).json({
+        mensaje: 'El pasajero ya está vinculado a otro usuario',
+      });
+    }
+
     const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
 
     const nuevoUsuario = await Usuario.create({
@@ -115,6 +169,7 @@ const crearUsuario = async (req, res) => {
       apellidos,
       correo,
       telefono,
+      id_pasajero,
     });
 
     return res.status(201).json({
@@ -122,6 +177,7 @@ const crearUsuario = async (req, res) => {
       usuario: quitarPassword(nuevoUsuario),
     });
   } catch (error) {
+    console.error(error);
     return responderError(res, 'Error al crear el usuario', error);
   }
 };
@@ -137,6 +193,7 @@ const actualizarUsuario = async (req, res) => {
       apellidos,
       correo,
       telefono,
+      id_pasajero,
       estado,
     } = req.body;
 
@@ -155,6 +212,23 @@ const actualizarUsuario = async (req, res) => {
       });
     }
 
+    const pasajeroExiste = await validarPasajero(id_pasajero);
+    if (!pasajeroExiste) {
+      return res.status(400).json({
+        mensaje: 'El pasajero vinculado no existe',
+      });
+    }
+
+    const pasajeroLibre = await pasajeroSinVincular(
+      id_pasajero,
+      usuario.id_usuario
+    );
+    if (!pasajeroLibre) {
+      return res.status(409).json({
+        mensaje: 'El pasajero ya está vinculado a otro usuario',
+      });
+    }
+
     const datosActualizar = limpiarCamposVacios({
       id_rol,
       nombre_usuario,
@@ -162,6 +236,7 @@ const actualizarUsuario = async (req, res) => {
       apellidos,
       correo,
       telefono,
+      id_pasajero,
       estado,
     });
 
@@ -176,6 +251,7 @@ const actualizarUsuario = async (req, res) => {
       usuario: quitarPassword(usuario),
     });
   } catch (error) {
+    console.error(error);
     return responderError(res, 'Error al actualizar el usuario', error);
   }
 };
@@ -197,6 +273,7 @@ const eliminarUsuario = async (req, res) => {
       mensaje: 'Usuario eliminado correctamente',
     });
   } catch (error) {
+    console.error(error);
     return responderError(res, 'Error al eliminar el usuario', error);
   }
 };

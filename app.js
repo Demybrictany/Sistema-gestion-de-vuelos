@@ -4,6 +4,13 @@ require('dotenv').config();
 
 const sequelize = require('./db/database');
 
+// Registra las asociaciones y los hooks de auditoría automática.
+require('./models');
+
+const { verificarToken, permitirRoles } = require('./middlewares/auth.middleware');
+const contextoMiddleware = require('./middlewares/contexto.middleware');
+const manejarErrores = require('./middlewares/error.middleware');
+
 // ==============================
 // RUTAS
 // ==============================
@@ -32,38 +39,58 @@ const PORT = process.env.PORT || 3000;
 // ==============================
 // MIDDLEWARES
 // ==============================
+app.set('trust proxy', 1);
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
 // ==============================
-// ENDPOINTS
-// ==============================
-app.use('/api/auth', authRoutes);
-app.use('/api/roles', rolRoutes);
-app.use('/api/usuarios', usuarioRoutes);
-app.use('/api/pasajeros', pasajeroRoutes);
-app.use('/api/aeropuertos', aeropuertoRoutes);
-app.use('/api/puertas', puertaRoutes);
-app.use('/api/bandas-equipaje', bandaEquipajeRoutes);
-app.use('/api/vuelos', vueloRoutes);
-app.use('/api/itinerarios', itinerarioRoutes);
-app.use('/api/pasajero-vuelo', pasajeroVueloRoutes);
-app.use('/api/escalas', escalaRoutes);
-app.use('/api/equipajes', equipajeRoutes);
-app.use('/api/equipaje-vuelo', equipajeVueloRoutes);
-app.use('/api/notificaciones', notificacionRoutes);
-app.use('/api/historial-vuelo', historialVueloRoutes);
-app.use('/api/historial-equipaje', historialEquipajeRoutes);
-app.use('/api/auditoria', auditoriaRoutes);
-
-// ==============================
-// RUTA PRINCIPAL
+// ENDPOINTS PÚBLICOS
 // ==============================
 app.get('/', (req, res) => {
   res.json({
     mensaje: 'API del Sistema de Vuelos funcionando correctamente',
+    version: '1.1.0',
   });
 });
+
+app.use('/api/auth', authRoutes);
+
+// A partir de aquí todas las rutas requieren JWT.
+app.use('/api', verificarToken, contextoMiddleware);
+
+const soloAdmin = permitirRoles('ADMINISTRADOR');
+const staff = permitirRoles('ADMINISTRADOR', 'SECRETARIO');
+
+app.use('/api/roles', soloAdmin, rolRoutes);
+app.use('/api/usuarios', soloAdmin, usuarioRoutes);
+app.use('/api/pasajeros', staff, pasajeroRoutes);
+app.use('/api/aeropuertos', staff, aeropuertoRoutes);
+app.use('/api/puertas', staff, puertaRoutes);
+app.use('/api/bandas-equipaje', staff, bandaEquipajeRoutes);
+
+// Vuelos, equipajes y notificaciones aplican permisos por método
+// dentro de sus propios routers.
+app.use('/api/vuelos', vueloRoutes);
+app.use('/api/itinerarios', staff, itinerarioRoutes);
+app.use('/api/pasajero-vuelo', staff, pasajeroVueloRoutes);
+app.use('/api/escalas', staff, escalaRoutes);
+app.use('/api/equipajes', equipajeRoutes);
+app.use('/api/equipaje-vuelo', staff, equipajeVueloRoutes);
+app.use('/api/notificaciones', notificacionRoutes);
+app.use('/api/historial-vuelo', staff, historialVueloRoutes);
+app.use('/api/historial-equipaje', staff, historialEquipajeRoutes);
+app.use('/api/auditoria', soloAdmin, auditoriaRoutes);
+
+// ==============================
+// 404 Y MANEJO CENTRAL DE ERRORES
+// ==============================
+app.use((req, res) => {
+  res.status(404).json({
+    mensaje: 'Ruta no encontrada',
+  });
+});
+
+app.use(manejarErrores);
 
 // ==============================
 // INICIAR SERVIDOR

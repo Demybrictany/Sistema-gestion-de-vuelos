@@ -8,9 +8,9 @@ const obtenerPuertas = async (req, res) => {
 
     res.status(200).json(puertas);
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al obtener las puertas',
-      error: error.message,
     });
   }
 };
@@ -30,9 +30,9 @@ const obtenerPuertaPorId = async (req, res) => {
 
     res.status(200).json(puerta);
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al obtener la puerta',
-      error: error.message,
     });
   }
 };
@@ -59,9 +59,9 @@ const crearPuerta = async (req, res) => {
       puerta: nuevaPuerta,
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al crear la puerta',
-      error: error.message,
     });
   }
 };
@@ -100,9 +100,9 @@ const actualizarPuerta = async (req, res) => {
       puerta,
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al actualizar la puerta',
-      error: error.message,
     });
   }
 };
@@ -126,9 +126,9 @@ const eliminarPuerta = async (req, res) => {
       mensaje: 'Puerta eliminada correctamente',
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al eliminar la puerta',
-      error: error.message,
     });
   }
 };

@@ -1,6 +1,7 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../db/database');
 const Rol = require('./rol.model');
+const Pasajero = require('./pasajero.model');
 
 const Usuario = sequelize.define(
   'Usuario',
@@ -57,6 +58,11 @@ const Usuario = sequelize.define(
       type: DataTypes.STRING(30),
       allowNull: true,
     },
+    id_pasajero: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      unique: true,
+    },
     estado: {
       type: DataTypes.ENUM('ACTIVO', 'INACTIVO'),
       allowNull: false,
@@ -83,6 +89,11 @@ Rol.hasMany(Usuario, {
 Usuario.belongsTo(Rol, {
   foreignKey: 'id_rol',
   as: 'rol',
+});
+
+Usuario.belongsTo(Pasajero, {
+  foreignKey: 'id_pasajero',
+  as: 'pasajero',
 });
 
 module.exports = Usuario;

@@ -23,14 +23,14 @@ INSERT INTO roles (id_rol, nombre, descripcion, created_at, updated_at) VALUES
 -- ------------------------------------------------------------
 INSERT INTO usuarios (
   id_usuario, id_rol, nombre_usuario, password_hash, nombres, apellidos,
-  correo, telefono, estado, ultimo_acceso, created_at, updated_at
+  correo, telefono, id_pasajero, estado, ultimo_acceso, created_at, updated_at
 ) VALUES
-  (1, 1, 'admin', '$2b$10$yGmTrFINAlEVTPl1L4S.WuTyqTut1lUQaK1LB.QbG4sOT5VOjcZ8m', 'Administrador', 'Sistema', 'admin@aeropuerto.test', '55550001', 'ACTIVO', '2026-10-15 23:31:49+00', '2026-10-02 23:45:33+00', '2026-10-15 23:31:49+00'),
-  (2, 2, 'secretario', '$2b$10$V.7twQkoTNiHZJmRGZYOg.81.fSad1s5Hne1DOdHOaObDf9WadjYS', 'Daniel', 'Hernandez', 'secretario@aeropuerto.test', '55550002', 'ACTIVO', '2026-10-03 00:03:17+00', '2026-10-02 23:45:33+00', '2026-10-03 00:03:17+00'),
-  (3, 3, 'carlos', '$2b$10$nwskMAqvlgEwJTcYARmpZOiQjxDgFuZITiSsSQZ/wWFoWTmNLLHxy', 'Carlos', 'Martinez', 'carlos@aeropuerto.test', '55550003', 'ACTIVO', '2026-10-03 00:03:50+00', '2026-10-02 23:45:33+00', '2026-10-03 00:03:50+00'),
-  (4, 3, 'sofia', '$2b$10$nwskMAqvlgEwJTcYARmpZOiQjxDgFuZITiSsSQZ/wWFoWTmNLLHxy', 'Sofia', 'Ramirez', 'sofia@aeropuerto.test', '55550004', 'ACTIVO', '2026-10-03 02:26:44+00', '2026-10-02 23:45:33+00', '2026-10-03 02:26:44+00'),
-  (5, 3, 'andrea', '$2b$10$nwskMAqvlgEwJTcYARmpZOiQjxDgFuZITiSsSQZ/wWFoWTmNLLHxy', 'Andrea', 'Lopez', 'andrea@aeropuerto.test', '55550005', 'ACTIVO', NULL, '2026-10-02 23:45:33+00', '2026-10-02 23:45:33+00'),
-  (6, 3, 'inactivo', '$2b$10$nwskMAqvlgEwJTcYARmpZOiQjxDgFuZITiSsSQZ/wWFoWTmNLLHxy', 'Usuario', 'Inactivo', 'inactivo@aeropuerto.test', '55550006', 'INACTIVO', NULL, '2026-10-02 23:45:33+00', '2026-10-02 23:45:33+00');
+  (1, 1, 'admin', '$2b$10$yGmTrFINAlEVTPl1L4S.WuTyqTut1lUQaK1LB.QbG4sOT5VOjcZ8m', 'Administrador', 'Sistema', 'admin@aeropuerto.test', '55550001', NULL, 'ACTIVO', '2026-10-15 23:31:49+00', '2026-10-02 23:45:33+00', '2026-10-15 23:31:49+00'),
+  (2, 2, 'secretario', '$2b$10$V.7twQkoTNiHZJmRGZYOg.81.fSad1s5Hne1DOdHOaObDf9WadjYS', 'Daniel', 'Hernandez', 'secretario@aeropuerto.test', '55550002', NULL, 'ACTIVO', '2026-10-03 00:03:17+00', '2026-10-02 23:45:33+00', '2026-10-03 00:03:17+00'),
+  (3, 3, 'carlos', '$2b$10$nwskMAqvlgEwJTcYARmpZOiQjxDgFuZITiSsSQZ/wWFoWTmNLLHxy', 'Carlos', 'Martinez', 'carlos@aeropuerto.test', '55550003', 1, 'ACTIVO', '2026-10-03 00:03:50+00', '2026-10-02 23:45:33+00', '2026-10-03 00:03:50+00'),
+  (4, 3, 'sofia', '$2b$10$nwskMAqvlgEwJTcYARmpZOiQjxDgFuZITiSsSQZ/wWFoWTmNLLHxy', 'Sofia', 'Ramirez', 'sofia@aeropuerto.test', '55550004', 2, 'ACTIVO', '2026-10-03 02:26:44+00', '2026-10-02 23:45:33+00', '2026-10-03 02:26:44+00'),
+  (5, 3, 'andrea', '$2b$10$nwskMAqvlgEwJTcYARmpZOiQjxDgFuZITiSsSQZ/wWFoWTmNLLHxy', 'Andrea', 'Lopez', 'andrea@aeropuerto.test', '55550005', 3, 'ACTIVO', NULL, '2026-10-02 23:45:33+00', '2026-10-02 23:45:33+00'),
+  (6, 3, 'inactivo', '$2b$10$nwskMAqvlgEwJTcYARmpZOiQjxDgFuZITiSsSQZ/wWFoWTmNLLHxy', 'Usuario', 'Inactivo', 'inactivo@aeropuerto.test', '55550006', NULL, 'INACTIVO', NULL, '2026-10-02 23:45:33+00', '2026-10-02 23:45:33+00');
 
 -- ------------------------------------------------------------
 -- aeropuertos

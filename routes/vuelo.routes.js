@@ -6,22 +6,55 @@ const {
   obtenerVueloPorId,
   crearVuelo,
   actualizarVuelo,
+  cambiarEstado,
+  reprogramar,
+  cambiarPuerta,
+  cancelar,
   eliminarVuelo,
+  obtenerMisVuelos,
 } = require('../controllers/vuelo.controller');
+const { permitirRoles } = require('../middlewares/auth.middleware');
+const { validar } = require('../middlewares/validar.middleware');
+const {
+  crearVuelo: crearVueloSchema,
+  actualizarVuelo: actualizarVueloSchema,
+  cambiarEstadoVuelo,
+  reprogramarVuelo,
+  cambiarPuertaVuelo,
+  cancelarVuelo,
+} = require('../validators/schemas');
 
-// Obtener todos los vuelos
-router.get('/', obtenerVuelos);
+const staff = permitirRoles('ADMINISTRADOR', 'SECRETARIO');
+const todos = permitirRoles('ADMINISTRADOR', 'SECRETARIO', 'PASAJERO');
 
-// Obtener vuelo por ID
-router.get('/:id', obtenerVueloPorId);
+// Rutas específicas antes de /:id
+router.get('/mios', permitirRoles('PASAJERO'), obtenerMisVuelos);
 
-// Crear vuelo
-router.post('/', crearVuelo);
+router.get('/', todos, obtenerVuelos);
+router.get('/:id', todos, obtenerVueloPorId);
 
-// Actualizar vuelo
-router.put('/:id', actualizarVuelo);
+router.post('/', staff, validar(crearVueloSchema), crearVuelo);
+router.put('/:id', staff, validar(actualizarVueloSchema), actualizarVuelo);
+router.patch(
+  '/:id/estado',
+  staff,
+  validar(cambiarEstadoVuelo),
+  cambiarEstado
+);
+router.patch(
+  '/:id/reprogramar',
+  staff,
+  validar(reprogramarVuelo),
+  reprogramar
+);
+router.patch(
+  '/:id/puerta',
+  staff,
+  validar(cambiarPuertaVuelo),
+  cambiarPuerta
+);
+router.post('/:id/cancelar', staff, validar(cancelarVuelo), cancelar);
 
-// Eliminar vuelo
-router.delete('/:id', eliminarVuelo);
+router.delete('/:id', permitirRoles('ADMINISTRADOR'), eliminarVuelo);
 
 module.exports = router;

@@ -1,222 +1,211 @@
+const { Op } = require('sequelize');
+
 const Notificacion = require('../models/notificacion.model');
 const Pasajero = require('../models/pasajero.model');
 const Vuelo = require('../models/vuelo.model');
 const Equipaje = require('../models/equipaje.model');
 
-// Obtener todas las notificaciones
-const obtenerNotificaciones = async (req, res) => {
-  try {
-    const notificaciones = await Notificacion.findAll({
-      include: [
-        {
-          model: Pasajero,
-          as: 'pasajero',
-        },
-        {
-          model: Vuelo,
-          as: 'vuelo',
-        },
-        {
-          model: Equipaje,
-          as: 'equipaje',
-        },
-      ],
-      order: [['fecha_envio', 'DESC']],
-    });
+const asyncHandler = require('../lib/async-handler');
+const { ErrorConEstado } = require('../lib/errores');
 
-    res.status(200).json(notificaciones);
-  } catch (error) {
-    res.status(500).json({
-      mensaje: 'Error al obtener las notificaciones',
-      error: error.message,
+const INCLUDE_NOTIFICACION = [
+  { model: Pasajero, as: 'pasajero' },
+  { model: Vuelo, as: 'vuelo' },
+  { model: Equipaje, as: 'equipaje' },
+];
+
+const obtenerNotificaciones = asyncHandler(async (req, res) => {
+  const notificaciones = await Notificacion.findAll({
+    include: INCLUDE_NOTIFICACION,
+    order: [['fecha_envio', 'DESC']],
+  });
+
+  res.status(200).json(notificaciones);
+});
+
+const obtenerMisNotificaciones = asyncHandler(async (req, res) => {
+  if (!req.usuario?.id_pasajero) {
+    throw new ErrorConEstado(
+      400,
+      'El usuario no está vinculado a una ficha de pasajero'
+    );
+  }
+
+  const where = { id_pasajero: req.usuario.id_pasajero };
+
+  if (req.query.leida === 'true' || req.query.leida === 'false') {
+    where.leida = req.query.leida === 'true';
+  }
+
+  const notificaciones = await Notificacion.findAll({
+    where,
+    include: INCLUDE_NOTIFICACION,
+    order: [['fecha_envio', 'DESC']],
+  });
+
+  res.status(200).json(notificaciones);
+});
+
+const obtenerNotificacionPorId = asyncHandler(async (req, res) => {
+  const notificacion = await Notificacion.findByPk(req.params.id, {
+    include: INCLUDE_NOTIFICACION,
+  });
+
+  if (!notificacion) {
+    throw new ErrorConEstado(404, 'Notificación no encontrada');
+  }
+
+  res.status(200).json(notificacion);
+});
+
+const crearNotificacion = asyncHandler(async (req, res) => {
+  const {
+    id_pasajero,
+    id_vuelo,
+    id_equipaje,
+    tipo,
+    titulo,
+    mensaje,
+  } = req.body;
+
+  const pasajero = await Pasajero.findByPk(id_pasajero);
+  if (!pasajero) {
+    throw new ErrorConEstado(400, 'El pasajero no existe');
+  }
+
+  if (id_vuelo) {
+    const vuelo = await Vuelo.findByPk(id_vuelo);
+    if (!vuelo) {
+      throw new ErrorConEstado(400, 'El vuelo no existe');
+    }
+  }
+
+  if (id_equipaje) {
+    const equipaje = await Equipaje.findByPk(id_equipaje);
+    if (!equipaje) {
+      throw new ErrorConEstado(400, 'El equipaje no existe');
+    }
+  }
+
+  const notificacion = await Notificacion.create({
+    id_pasajero,
+    id_vuelo,
+    id_equipaje,
+    tipo,
+    titulo,
+    mensaje,
+    leida: false,
+  });
+
+  res.status(201).json({
+    mensaje: 'Notificación creada correctamente',
+    notificacion,
+  });
+});
+
+const actualizarNotificacion = asyncHandler(async (req, res) => {
+  const notificacion = await Notificacion.findByPk(req.params.id);
+
+  if (!notificacion) {
+    throw new ErrorConEstado(404, 'Notificación no encontrada');
+  }
+
+  const datos = { ...req.body };
+
+  if (datos.leida === true && !notificacion.leida) {
+    datos.fecha_lectura = new Date();
+  }
+
+  if (datos.leida === false) {
+    datos.fecha_lectura = null;
+  }
+
+  await notificacion.update(datos);
+
+  res.status(200).json({
+    mensaje: 'Notificación actualizada correctamente',
+    notificacion,
+  });
+});
+
+const marcarLeida = asyncHandler(async (req, res) => {
+  const notificacion = await Notificacion.findByPk(req.params.id);
+
+  if (!notificacion) {
+    throw new ErrorConEstado(404, 'Notificación no encontrada');
+  }
+
+  if (
+    req.usuario.rol === 'PASAJERO' &&
+    notificacion.id_pasajero !== req.usuario.id_pasajero
+  ) {
+    throw new ErrorConEstado(
+      403,
+      'No tienes permisos para modificar esta notificación'
+    );
+  }
+
+  if (!notificacion.leida) {
+    await notificacion.update({
+      leida: true,
+      fecha_lectura: new Date(),
     });
   }
-};
 
-// Obtener notificación por ID
-const obtenerNotificacionPorId = async (req, res) => {
-  try {
-    const { id } = req.params;
+  res.status(200).json({
+    mensaje: 'Notificación marcada como leída',
+    notificacion,
+  });
+});
 
-    const notificacion = await Notificacion.findByPk(id, {
-      include: [
-        { model: Pasajero, as: 'pasajero' },
-        { model: Vuelo, as: 'vuelo' },
-        { model: Equipaje, as: 'equipaje' },
-      ],
-    });
-
-    if (!notificacion) {
-      return res.status(404).json({
-        mensaje: 'Notificación no encontrada',
-      });
-    }
-
-    res.status(200).json(notificacion);
-  } catch (error) {
-    res.status(500).json({
-      mensaje: 'Error al obtener la notificación',
-      error: error.message,
-    });
+const marcarTodasLeidas = asyncHandler(async (req, res) => {
+  if (!req.usuario?.id_pasajero) {
+    throw new ErrorConEstado(
+      400,
+      'El usuario no está vinculado a una ficha de pasajero'
+    );
   }
-};
 
-// Crear notificación
-const crearNotificacion = async (req, res) => {
-  try {
-    const {
-      id_pasajero,
-      id_vuelo,
-      id_equipaje,
-      tipo,
-      titulo,
-      mensaje,
-    } = req.body;
-
-    if (!id_pasajero || !tipo || !titulo || !mensaje) {
-      return res.status(400).json({
-        mensaje:
-          'Pasajero, tipo, título y mensaje son obligatorios',
-      });
+  const [cantidad] = await Notificacion.update(
+    {
+      leida: true,
+      fecha_lectura: new Date(),
+    },
+    {
+      where: {
+        id_pasajero: req.usuario.id_pasajero,
+        leida: false,
+      },
     }
+  );
 
-    const pasajero = await Pasajero.findByPk(id_pasajero);
+  res.status(200).json({
+    mensaje: 'Notificaciones marcadas como leídas',
+    actualizadas: cantidad,
+  });
+});
 
-    if (!pasajero) {
-      return res.status(400).json({
-        mensaje: 'El pasajero no existe',
-      });
-    }
+const eliminarNotificacion = asyncHandler(async (req, res) => {
+  const notificacion = await Notificacion.findByPk(req.params.id);
 
-    if (id_vuelo) {
-      const vuelo = await Vuelo.findByPk(id_vuelo);
-
-      if (!vuelo) {
-        return res.status(400).json({
-          mensaje: 'El vuelo no existe',
-        });
-      }
-    }
-
-    if (id_equipaje) {
-      const equipaje = await Equipaje.findByPk(id_equipaje);
-
-      if (!equipaje) {
-        return res.status(400).json({
-          mensaje: 'El equipaje no existe',
-        });
-      }
-    }
-
-    const nuevaNotificacion = await Notificacion.create({
-      id_pasajero,
-      id_vuelo,
-      id_equipaje,
-      tipo,
-      titulo,
-      mensaje,
-      leida: false,
-    });
-
-    res.status(201).json({
-      mensaje: 'Notificación creada correctamente',
-      notificacion: nuevaNotificacion,
-    });
-  } catch (error) {
-    res.status(500).json({
-      mensaje: 'Error al crear la notificación',
-      error: error.message,
-    });
+  if (!notificacion) {
+    throw new ErrorConEstado(404, 'Notificación no encontrada');
   }
-};
 
-// Actualizar notificación
-const actualizarNotificacion = async (req, res) => {
-  try {
-    const { id } = req.params;
+  await notificacion.destroy();
 
-    const notificacion = await Notificacion.findByPk(id);
-
-    if (!notificacion) {
-      return res.status(404).json({
-        mensaje: 'Notificación no encontrada',
-      });
-    }
-
-    const {
-      tipo,
-      titulo,
-      mensaje,
-      leida,
-    } = req.body;
-
-    const datosActualizar = {
-      tipo,
-      titulo,
-      mensaje,
-      leida,
-    };
-
-    // Si se marca como leída, registrar fecha de lectura
-    if (leida === true && !notificacion.leida) {
-      datosActualizar.fecha_lectura = new Date();
-    }
-
-    // Si vuelve a marcarse como no leída
-    if (leida === false) {
-      datosActualizar.fecha_lectura = null;
-    }
-
-    Object.keys(datosActualizar).forEach((campo) => {
-      if (datosActualizar[campo] === undefined) {
-        delete datosActualizar[campo];
-      }
-    });
-
-    await notificacion.update(datosActualizar);
-
-    res.status(200).json({
-      mensaje: 'Notificación actualizada correctamente',
-      notificacion,
-    });
-  } catch (error) {
-    res.status(500).json({
-      mensaje: 'Error al actualizar la notificación',
-      error: error.message,
-    });
-  }
-};
-
-// Eliminar notificación
-const eliminarNotificacion = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const notificacion = await Notificacion.findByPk(id);
-
-    if (!notificacion) {
-      return res.status(404).json({
-        mensaje: 'Notificación no encontrada',
-      });
-    }
-
-    await notificacion.destroy();
-
-    res.status(200).json({
-      mensaje: 'Notificación eliminada correctamente',
-    });
-  } catch (error) {
-    res.status(500).json({
-      mensaje: 'Error al eliminar la notificación',
-      error: error.message,
-    });
-  }
-};
+  res.status(200).json({
+    mensaje: 'Notificación eliminada correctamente',
+  });
+});
 
 module.exports = {
   obtenerNotificaciones,
+  obtenerMisNotificaciones,
   obtenerNotificacionPorId,
   crearNotificacion,
   actualizarNotificacion,
+  marcarLeida,
+  marcarTodasLeidas,
   eliminarNotificacion,
 };

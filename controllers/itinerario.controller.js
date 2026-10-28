@@ -24,9 +24,9 @@ const obtenerItinerarios = async (req, res) => {
 
     res.status(200).json(itinerarios);
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al obtener los itinerarios',
-      error: error.message,
     });
   }
 };
@@ -61,9 +61,9 @@ const obtenerItinerarioPorId = async (req, res) => {
 
     res.status(200).json(itinerario);
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al obtener el itinerario',
-      error: error.message,
     });
   }
 };
@@ -137,9 +137,9 @@ const crearItinerario = async (req, res) => {
       itinerario: nuevoItinerario,
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al crear el itinerario',
-      error: error.message,
     });
   }
 };
@@ -172,9 +172,9 @@ const actualizarItinerario = async (req, res) => {
       itinerario,
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al actualizar el itinerario',
-      error: error.message,
     });
   }
 };
@@ -198,9 +198,9 @@ const eliminarItinerario = async (req, res) => {
       mensaje: 'Itinerario eliminado correctamente',
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al eliminar el itinerario',
-      error: error.message,
     });
   }
 };

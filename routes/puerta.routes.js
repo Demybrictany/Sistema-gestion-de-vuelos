@@ -8,20 +8,16 @@ const {
   actualizarPuerta,
   eliminarPuerta,
 } = require('../controllers/puerta.controller');
+const { validar } = require('../middlewares/validar.middleware');
+const {
+  crearPuerta: crearPuertaSchema,
+  actualizarPuerta: actualizarPuertaSchema,
+} = require('../validators/schemas');
 
-// Obtener todas las puertas
 router.get('/', obtenerPuertas);
-
-// Obtener puerta por ID
 router.get('/:id', obtenerPuertaPorId);
-
-// Crear puerta
-router.post('/', crearPuerta);
-
-// Actualizar puerta
-router.put('/:id', actualizarPuerta);
-
-// Eliminar puerta
+router.post('/', validar(crearPuertaSchema), crearPuerta);
+router.put('/:id', validar(actualizarPuertaSchema), actualizarPuerta);
 router.delete('/:id', eliminarPuerta);
 
 module.exports = router;

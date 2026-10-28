@@ -24,9 +24,9 @@ const obtenerHistorialVuelos = async (req, res) => {
 
     res.status(200).json(historial);
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al obtener el historial de vuelos',
-      error: error.message,
     });
   }
 };
@@ -60,9 +60,9 @@ const obtenerHistorialVueloPorId = async (req, res) => {
 
     res.status(200).json(historial);
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al obtener el historial del vuelo',
-      error: error.message,
     });
   }
 };
@@ -90,9 +90,9 @@ const obtenerHistorialPorVuelo = async (req, res) => {
 
     res.status(200).json(historial);
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al obtener el historial del vuelo',
-      error: error.message,
     });
   }
 };
@@ -147,9 +147,9 @@ const crearHistorialVuelo = async (req, res) => {
       historial: nuevoHistorial,
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al registrar el historial del vuelo',
-      error: error.message,
     });
   }
 };
@@ -173,9 +173,9 @@ const eliminarHistorialVuelo = async (req, res) => {
       mensaje: 'Registro de historial eliminado correctamente',
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       mensaje: 'Error al eliminar el historial del vuelo',
-      error: error.message,
     });
   }
 };

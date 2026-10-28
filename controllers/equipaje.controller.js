@@ -3,243 +3,209 @@ const Pasajero = require('../models/pasajero.model');
 const Aeropuerto = require('../models/aeropuerto.model');
 const BandaEquipaje = require('../models/banda_equipaje.model');
 
-// Obtener todos los equipajes
-const obtenerEquipajes = async (req, res) => {
-  try {
-    const equipajes = await Equipaje.findAll({
-      include: [
-        {
-          model: Pasajero,
-          as: 'pasajero',
-        },
-        {
-          model: Aeropuerto,
-          as: 'aeropuertoOrigen',
-        },
-        {
-          model: Aeropuerto,
-          as: 'aeropuertoDestino',
-        },
-        {
-          model: BandaEquipaje,
-          as: 'bandaActual',
-        },
-      ],
-    });
+const asyncHandler = require('../lib/async-handler');
+const { ErrorConEstado } = require('../lib/errores');
+const {
+  registrarTramo: registrarTramoService,
+  cambiarBanda: cambiarBandaService,
+  cambiarEstado: cambiarEstadoService,
+  obtenerEquipajesDePasajero,
+} = require('../services/equipaje.service');
 
-    res.status(200).json(equipajes);
-  } catch (error) {
-    res.status(500).json({
-      mensaje: 'Error al obtener los equipajes',
-      error: error.message,
-    });
+const INCLUDE_EQUIPAJE = [
+  { model: Pasajero, as: 'pasajero' },
+  { model: Aeropuerto, as: 'aeropuertoOrigen' },
+  { model: Aeropuerto, as: 'aeropuertoDestino' },
+  { model: BandaEquipaje, as: 'bandaActual' },
+];
+
+const contextoDe = (req) => ({
+  idUsuario: req.usuario?.id_usuario || null,
+  ip: req.ip,
+});
+
+const obtenerEquipajes = asyncHandler(async (req, res) => {
+  const equipajes = await Equipaje.findAll({
+    include: INCLUDE_EQUIPAJE,
+    order: [['created_at', 'DESC']],
+  });
+
+  res.status(200).json(equipajes);
+});
+
+const obtenerMisEquipajes = asyncHandler(async (req, res) => {
+  if (!req.usuario?.id_pasajero) {
+    throw new ErrorConEstado(
+      400,
+      'El usuario no está vinculado a una ficha de pasajero'
+    );
   }
-};
 
-// Obtener equipaje por ID
-const obtenerEquipajePorId = async (req, res) => {
-  try {
-    const { id } = req.params;
+  const equipajes = await obtenerEquipajesDePasajero(req.usuario.id_pasajero);
 
-    const equipaje = await Equipaje.findByPk(id, {
-      include: [
-        { model: Pasajero, as: 'pasajero' },
-        { model: Aeropuerto, as: 'aeropuertoOrigen' },
-        { model: Aeropuerto, as: 'aeropuertoDestino' },
-        { model: BandaEquipaje, as: 'bandaActual' },
-      ],
-    });
+  res.status(200).json(equipajes);
+});
 
-    if (!equipaje) {
-      return res.status(404).json({
-        mensaje: 'Equipaje no encontrado',
-      });
-    }
+const obtenerEquipajePorId = asyncHandler(async (req, res) => {
+  const equipaje = await Equipaje.findByPk(req.params.id, {
+    include: INCLUDE_EQUIPAJE,
+  });
 
-    res.status(200).json(equipaje);
-  } catch (error) {
-    res.status(500).json({
-      mensaje: 'Error al obtener el equipaje',
-      error: error.message,
-    });
+  if (!equipaje) {
+    throw new ErrorConEstado(404, 'Equipaje no encontrado');
   }
-};
 
-// Crear equipaje
-const crearEquipaje = async (req, res) => {
-  try {
-    const {
-      codigo_equipaje,
-      id_pasajero,
-      peso,
-      origen,
-      destino_final,
-      id_banda_actual,
-      observaciones,
-    } = req.body;
-
-    if (!codigo_equipaje || !id_pasajero || !origen || !destino_final) {
-      return res.status(400).json({
-        mensaje:
-          'Código de equipaje, pasajero, origen y destino final son obligatorios',
-      });
-    }
-
-    if (peso !== undefined && peso !== null && peso < 0) {
-      return res.status(400).json({
-        mensaje: 'El peso del equipaje no puede ser negativo',
-      });
-    }
-
-    const pasajero = await Pasajero.findByPk(id_pasajero);
-
-    if (!pasajero) {
-      return res.status(400).json({
-        mensaje: 'El pasajero seleccionado no existe',
-      });
-    }
-
-    const aeropuertoOrigen = await Aeropuerto.findByPk(origen);
-    const aeropuertoDestino = await Aeropuerto.findByPk(destino_final);
-
-    if (!aeropuertoOrigen || !aeropuertoDestino) {
-      return res.status(400).json({
-        mensaje: 'El aeropuerto de origen o destino no existe',
-      });
-    }
-
-    if (origen === destino_final) {
-      return res.status(400).json({
-        mensaje: 'El origen y el destino final no pueden ser el mismo',
-      });
-    }
-
-    if (id_banda_actual) {
-      const banda = await BandaEquipaje.findByPk(id_banda_actual);
-
-      if (!banda) {
-        return res.status(400).json({
-          mensaje: 'La banda de equipaje seleccionada no existe',
-        });
-      }
-    }
-
-    const nuevoEquipaje = await Equipaje.create({
-      codigo_equipaje,
-      id_pasajero,
-      peso,
-      origen,
-      destino_final,
-      id_banda_actual,
-      estado: 'REGISTRADO',
-      observaciones,
-    });
-
-    res.status(201).json({
-      mensaje: 'Equipaje registrado correctamente',
-      equipaje: nuevoEquipaje,
-    });
-  } catch (error) {
-    res.status(500).json({
-      mensaje: 'Error al registrar el equipaje',
-      error: error.message,
-    });
+  if (
+    req.usuario.rol === 'PASAJERO' &&
+    equipaje.id_pasajero !== req.usuario.id_pasajero
+  ) {
+    throw new ErrorConEstado(
+      403,
+      'No tienes permisos para consultar este equipaje'
+    );
   }
-};
 
-// Actualizar equipaje
-const actualizarEquipaje = async (req, res) => {
-  try {
-    const { id } = req.params;
+  res.status(200).json(equipaje);
+});
 
-    const equipaje = await Equipaje.findByPk(id);
+const crearEquipaje = asyncHandler(async (req, res) => {
+  const {
+    codigo_equipaje,
+    id_pasajero,
+    peso,
+    origen,
+    destino_final,
+    id_banda_actual,
+    observaciones,
+  } = req.body;
 
-    if (!equipaje) {
-      return res.status(404).json({
-        mensaje: 'Equipaje no encontrado',
-      });
-    }
-
-    const {
-      peso,
-      id_banda_actual,
-      estado,
-      observaciones,
-    } = req.body;
-
-    if (peso !== undefined && peso !== null && peso < 0) {
-      return res.status(400).json({
-        mensaje: 'El peso del equipaje no puede ser negativo',
-      });
-    }
-
-    if (id_banda_actual) {
-      const banda = await BandaEquipaje.findByPk(id_banda_actual);
-
-      if (!banda) {
-        return res.status(400).json({
-          mensaje: 'La banda de equipaje seleccionada no existe',
-        });
-      }
-    }
-
-    const datosActualizar = {
-      peso,
-      id_banda_actual,
-      estado,
-      observaciones,
-    };
-
-    Object.keys(datosActualizar).forEach((campo) => {
-      if (datosActualizar[campo] === undefined) {
-        delete datosActualizar[campo];
-      }
-    });
-
-    await equipaje.update(datosActualizar);
-
-    res.status(200).json({
-      mensaje: 'Equipaje actualizado correctamente',
-      equipaje,
-    });
-  } catch (error) {
-    res.status(500).json({
-      mensaje: 'Error al actualizar el equipaje',
-      error: error.message,
-    });
+  if (origen === destino_final) {
+    throw new ErrorConEstado(
+      400,
+      'El origen y el destino final no pueden ser el mismo'
+    );
   }
-};
 
-// Eliminar equipaje
-const eliminarEquipaje = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const equipaje = await Equipaje.findByPk(id);
-
-    if (!equipaje) {
-      return res.status(404).json({
-        mensaje: 'Equipaje no encontrado',
-      });
-    }
-
-    await equipaje.destroy();
-
-    res.status(200).json({
-      mensaje: 'Equipaje eliminado correctamente',
-    });
-  } catch (error) {
-    res.status(500).json({
-      mensaje: 'Error al eliminar el equipaje',
-      error: error.message,
-    });
+  const pasajero = await Pasajero.findByPk(id_pasajero);
+  if (!pasajero) {
+    throw new ErrorConEstado(400, 'El pasajero seleccionado no existe');
   }
-};
+
+  const aeropuertoOrigen = await Aeropuerto.findByPk(origen);
+  const aeropuertoDestino = await Aeropuerto.findByPk(destino_final);
+
+  if (!aeropuertoOrigen || !aeropuertoDestino) {
+    throw new ErrorConEstado(
+      400,
+      'El aeropuerto de origen o destino no existe'
+    );
+  }
+
+  if (id_banda_actual) {
+    const banda = await BandaEquipaje.findByPk(id_banda_actual);
+    if (!banda) {
+      throw new ErrorConEstado(
+        400,
+        'La banda de equipaje seleccionada no existe'
+      );
+    }
+  }
+
+  const equipaje = await Equipaje.create({
+    codigo_equipaje,
+    id_pasajero,
+    peso,
+    origen,
+    destino_final,
+    id_banda_actual,
+    estado: 'REGISTRADO',
+    observaciones,
+  });
+
+  res.status(201).json({
+    mensaje: 'Equipaje registrado correctamente',
+    equipaje,
+  });
+});
+
+const actualizarEquipaje = asyncHandler(async (req, res) => {
+  const equipaje = await Equipaje.findByPk(req.params.id);
+
+  if (!equipaje) {
+    throw new ErrorConEstado(404, 'Equipaje no encontrado');
+  }
+
+  await equipaje.update(req.body);
+
+  res.status(200).json({
+    mensaje: 'Equipaje actualizado correctamente',
+    equipaje: await Equipaje.findByPk(req.params.id, {
+      include: INCLUDE_EQUIPAJE,
+    }),
+  });
+});
+
+const registrarTramo = asyncHandler(async (req, res) => {
+  const resultado = await registrarTramoService({
+    idEquipaje: req.params.id,
+    datos: req.body,
+    contexto: contextoDe(req),
+  });
+
+  res.status(201).json({
+    mensaje: 'Tramo de equipaje registrado correctamente',
+    ...resultado,
+  });
+});
+
+const cambiarBanda = asyncHandler(async (req, res) => {
+  const equipaje = await cambiarBandaService({
+    idEquipaje: req.params.id,
+    datos: req.body,
+    contexto: contextoDe(req),
+  });
+
+  res.status(200).json({
+    mensaje: 'Banda de equipaje actualizada correctamente',
+    equipaje,
+  });
+});
+
+const cambiarEstado = asyncHandler(async (req, res) => {
+  const equipaje = await cambiarEstadoService({
+    idEquipaje: req.params.id,
+    datos: req.body,
+    contexto: contextoDe(req),
+  });
+
+  res.status(200).json({
+    mensaje: 'Estado del equipaje actualizado correctamente',
+    equipaje,
+  });
+});
+
+const eliminarEquipaje = asyncHandler(async (req, res) => {
+  const equipaje = await Equipaje.findByPk(req.params.id);
+
+  if (!equipaje) {
+    throw new ErrorConEstado(404, 'Equipaje no encontrado');
+  }
+
+  await equipaje.destroy();
+
+  res.status(200).json({
+    mensaje: 'Equipaje eliminado correctamente',
+  });
+});
 
 module.exports = {
   obtenerEquipajes,
+  obtenerMisEquipajes,
   obtenerEquipajePorId,
   crearEquipaje,
   actualizarEquipaje,
+  registrarTramo,
+  cambiarBanda,
+  cambiarEstado,
   eliminarEquipaje,
 };
