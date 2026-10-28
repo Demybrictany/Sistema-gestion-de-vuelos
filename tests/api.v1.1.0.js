@@ -365,6 +365,72 @@ const esperarServidor = async () => {
     `(${r.status})`
   );
 
+  // --- Invariantes v1.1.1 ---
+
+  // Los tramos no se editan ni se borran directamente.
+  r = await req('PUT', '/api/equipaje-vuelo/1', {
+    token: secretario,
+    body: { estado: 'ENTREGADO' },
+  });
+  check('No se puede editar un tramo directamente', r.status === 404, `(${r.status})`);
+
+  r = await req('DELETE', '/api/equipaje-vuelo/1', { token: secretario });
+  check('No se puede borrar un tramo directamente', r.status === 404, `(${r.status})`);
+
+  // La banda respeta la máquina de estados del equipaje.
+  r = await req('PATCH', '/api/equipajes/8/banda', {
+    token: secretario,
+    body: { id_banda: 8 },
+  });
+  check('Rechaza asignar banda a un equipaje dañado', r.status === 400, `(${r.status})`);
+
+  // Cupo de pasajeros validado en transacción.
+  r = await req('POST', '/api/vuelos', {
+    token: secretario,
+    body: {
+      codigo_vuelo: 'TSTCAP',
+      id_aeropuerto_origen: 1,
+      id_aeropuerto_destino: 2,
+      fecha_salida: '2026-12-15',
+      hora_salida: '08:00',
+      fecha_llegada: '2026-12-15',
+      hora_llegada: '10:00',
+      capacidad_pasajeros: 2,
+    },
+  });
+  check('Crea vuelo con capacidad 2', r.status === 201, `(${r.status})`);
+  const vueloCupoId = r.data.vuelo?.id_vuelo;
+
+  r = await req('POST', '/api/pasajero-vuelo', {
+    token: secretario,
+    body: { id_pasajero: 1, id_vuelo: vueloCupoId },
+  });
+  check('Asigna primer pasajero al vuelo con cupo', r.status === 201, `(${r.status})`);
+
+  r = await req('POST', '/api/pasajero-vuelo', {
+    token: secretario,
+    body: { id_pasajero: 2, id_vuelo: vueloCupoId },
+  });
+  check('Asigna segundo pasajero al vuelo con cupo', r.status === 201, `(${r.status})`);
+
+  r = await req('POST', '/api/pasajero-vuelo', {
+    token: secretario,
+    body: { id_pasajero: 3, id_vuelo: vueloCupoId },
+  });
+  check('Rechaza pasajero cuando el vuelo está lleno', r.status === 409, `(${r.status})`);
+
+  r = await req('POST', '/api/pasajero-vuelo', {
+    token: secretario,
+    body: { id_pasajero: 1, id_vuelo: vueloCupoId, id_itinerario: 2 },
+  });
+  check('Rechaza itinerario de otro pasajero', r.status === 400, `(${r.status})`);
+
+  r = await req('PUT', `/api/vuelos/${vueloCupoId}`, {
+    token: secretario,
+    body: { capacidad_pasajeros: 1 },
+  });
+  check('Rechaza reducir la capacidad por debajo de los asignados', r.status === 400, `(${r.status})`);
+
   // --- Vínculo usuario-pasajero ---
   r = await req('POST', '/api/usuarios', {
     token: admin,

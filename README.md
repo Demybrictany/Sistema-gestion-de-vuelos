@@ -2,7 +2,7 @@
 
 Sistema para la gestión de **vuelos, pasajeros y equipaje** del Aeropuerto Internacional de la Ciudad de México (AICM). Administra puertas de embarque, bandas de equipaje, itinerarios, escalas, notificaciones, historial y auditoría.
 
-**Versión:** `v1.1.0`
+**Versión:** `v1.1.1`
 **Repositorio:** https://github.com/Demybrictany/Sistema-gestion-de-vuelos
 **Equipo:** Juanjo, Demy
 
@@ -23,6 +23,21 @@ El panel gráfico en tiempo real, la mensajería asíncrona, los reportes y el a
 
 ---
 
+## Novedades de la v1.1.1
+
+- **Cupo de pasajeros en transacción:** la asignación bloquea el vuelo (`FOR UPDATE`), valida duplicados y cupo, y evita el *overbooking* concurrente. Las reservas canceladas liberan su lugar.
+- **Reactivación de reservas:** volver a activar una reserva cancelada revalida el cupo y el estado del vuelo.
+- **Capacidad del vuelo:** no se puede reducir por debajo de los pasajeros ya asignados.
+- **Tramos de equipaje inmutables:** se eliminan `PUT` y `DELETE` de `/api/equipaje-vuelo`; toda alta pasa por el flujo de negocio que valida continuidad de ruta.
+- **Máquina de estados de equipaje** aplicada también al asignar banda (por ejemplo, un equipaje dañado no puede pasar a banda).
+- **Itinerarios:** se valida que el itinerario pertenezca al pasajero antes de asignarlo.
+- **`registrado_por`** se deriva del token y ya no se acepta desde el cliente.
+- **Salud del servicio:** `GET /health` comprueba también la base de datos.
+- **Arranque seguro:** el proceso termina con código 1 si no puede conectar con PostgreSQL.
+- **Pruebas de integración ampliadas** con los nuevos invariantes.
+
+---
+
 ## Novedades de la v1.1.0
 
 - **Seguridad:** todas las rutas `/api/*` requieren JWT (excepto el login). Permisos por rol: administrador, secretario y pasajero.
@@ -35,7 +50,7 @@ El panel gráfico en tiempo real, la mensajería asíncrona, los reportes y el a
 - **Auditoría automática** de altas, modificaciones y bajas mediante hooks de Sequelize.
 - **Flujo de equipaje en conexión:** registro de tramos, validación de continuidad de ruta, asignación de banda y entrega.
 - **Vínculo usuario–pasajero:** cada usuario con rol `PASAJERO` puede consultar sus propios vuelos, equipajes y notificaciones.
-- **Pruebas de integración:** 56 verificaciones automatizadas (`npm run test:api`).
+- **Pruebas de integración:** verificaciones automatizadas de la API (`npm run test:api`).
 
 ---
 
@@ -344,6 +359,8 @@ Se generan automáticamente en:
 
 URL base: `http://localhost:3000/api`
 
+`GET /health` (fuera de `/api`, público) devuelve `200` si la API y la base de datos responden, y `503` en caso contrario.
+
 ### Autenticación
 
 ```bash
@@ -388,13 +405,13 @@ curl http://localhost:3000/api/auth/me \
 | Pasajero–vuelo | `/api/pasajero-vuelo` |
 | Escalas | `/api/escalas` |
 | Equipajes | `/api/equipajes` |
-| Equipaje–vuelo | `/api/equipaje-vuelo` |
+| Equipaje–vuelo | `/api/equipaje-vuelo` (solo lectura y alta; sin `PUT`/`DELETE`) |
 | Notificaciones | `/api/notificaciones` |
 | Historial de vuelo | `/api/historial-vuelo` (sin DELETE) |
 | Historial de equipaje | `/api/historial-equipaje` (sin DELETE) |
 | Auditoría | `/api/auditoria` (solo lectura) |
 
-Cada recurso expone `GET /`, `GET /:id`, `POST /`, `PUT /:id` y, cuando aplica, `DELETE /:id`.
+Cada recurso expone `GET /`, `GET /:id`, `POST /`, `PUT /:id` y, cuando aplica, `DELETE /:id`. Las mutaciones sensibles (estados, puertas, tramos de equipaje, cupo) se realizan mediante los endpoints de negocio, que aplican las reglas del dominio.
 
 ### Endpoints de negocio
 
@@ -466,7 +483,7 @@ Datos sembrados **solo para desarrollo**. Cámbialos antes de desplegar.
 | `npm start` | Inicia el servidor. |
 | `npm run dev` | Inicia con recarga automática (nodemon). |
 | `npm run db:init` | Crea el esquema y carga los datos iniciales. |
-| `npm run test:api` | Ejecuta las pruebas de integración v1.1.0 (56 verificaciones). |
+| `npm test` / `npm run test:api` | Ejecuta las pruebas de integración de la API. |
 
 ---
 
@@ -482,6 +499,7 @@ Datos sembrados **solo para desarrollo**. Cámbialos antes de desplegar.
 |---|---|
 | `v1.0.0` | Backend base y migración a PostgreSQL. |
 | `v1.1.0` | Seguridad, validaciones, lógica de negocio, notificaciones, historial y auditoría automáticos. |
+| `v1.1.1` | Cupo de pasajeros en transacción, tramos inmutables, estados de equipaje y `/health`. |
 
 ### Convención de commits
 
@@ -496,7 +514,7 @@ chore: tareas de mantenimiento
 
 ---
 
-## Limitaciones conocidas de v1.1.0
+## Limitaciones conocidas de v1.1.1
 
 - Sin frontend ni panel gráfico en tiempo real.
 - Sin mensajería asíncrona (RabbitMQ/Kafka): las notificaciones se guardan en la base, todavía no se envían por correo/push.
@@ -513,6 +531,7 @@ chore: tareas de mantenimiento
 | Versión | Alcance |
 |---|---|
 | **v1.1.0** | Seguridad, validaciones, máquina de estados, conflicto de puertas, equipaje en conexión, notificaciones, historial y auditoría. |
+| **v1.1.1** | Endurecimiento de invariantes: cupo concurrente, tramos inmutables, transiciones de equipaje y `/health`. |
 | v1.2.0 | Panel gráfico en tiempo real (25 puertas), frontend y WebSocket/SSE. |
 | v1.3.0 | RabbitMQ/Kafka, 15 reportes con Excel/PDF, Power BI, agente de IA + RAG y despliegue en producción. |
 

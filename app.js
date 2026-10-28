@@ -36,6 +36,8 @@ const app = express();
 
 const PORT = process.env.PORT || 3000;
 
+app.disable('x-powered-by');
+
 // ==============================
 // MIDDLEWARES
 // ==============================
@@ -49,8 +51,18 @@ app.use(express.json({ limit: '1mb' }));
 app.get('/', (req, res) => {
   res.json({
     mensaje: 'API del Sistema de Vuelos funcionando correctamente',
-    version: '1.1.0',
+    version: '1.1.1',
   });
+});
+
+// Verificación de salud para el despliegue (comprueba también la base).
+app.get('/health', async (req, res) => {
+  try {
+    await sequelize.query('SELECT 1');
+    res.status(200).json({ estado: 'ok', base_datos: 'ok' });
+  } catch (error) {
+    res.status(503).json({ estado: 'error', base_datos: 'no disponible' });
+  }
 });
 
 app.use('/api/auth', authRoutes);
@@ -109,6 +121,8 @@ const iniciarServidor = async () => {
       'Error al conectar con PostgreSQL:',
       error.message
     );
+    // Sin base de datos el proceso no debe quedarse vivo sin escuchar.
+    process.exit(1);
   }
 };
 

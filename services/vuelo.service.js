@@ -316,6 +316,29 @@ const actualizarVuelo = async ({ idVuelo, datos, motivo, contexto }) => {
       });
     }
 
+    // No se puede reducir la capacidad por debajo de los pasajeros ya
+    // asignados (las reservas canceladas liberan su lugar).
+    if (estadoNuevo !== 'CANCELADO' && datos.capacidad_pasajeros !== undefined) {
+      const pasajerosActivos = await PasajeroVuelo.count({
+        where: {
+          id_vuelo: idVuelo,
+          estado: { [Op.ne]: 'CANCELADO' },
+        },
+        transaction,
+      });
+
+      if (
+        datos.capacidad_pasajeros > 0 &&
+        pasajerosActivos > datos.capacidad_pasajeros
+      ) {
+        throw new ErrorConEstado(
+          400,
+          `La capacidad (${datos.capacidad_pasajeros}) es menor que los ` +
+            `${pasajerosActivos} pasajeros asignados al vuelo`
+        );
+      }
+    }
+
     const datosActualizar = {};
 
     for (const campo of CAMPOS_ACTUALIZABLES) {

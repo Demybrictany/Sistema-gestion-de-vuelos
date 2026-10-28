@@ -48,14 +48,6 @@ const estadoEquipaje = z.enum([
   'EXTRAVIADO',
   'DANADO',
 ]);
-const estadoEquipajeVuelo = z.enum([
-  'REGISTRADO',
-  'CARGADO',
-  'EN_VUELO',
-  'RECIBIDO',
-  'TRANSFERIDO',
-  'ENTREGADO',
-]);
 const estadoEscala = z.enum([
   'PENDIENTE',
   'EN_TRANSITO',
@@ -294,7 +286,6 @@ const crearPasajeroVuelo = z
     id_itinerario: id.optional().nullable(),
     numero_asiento: z.string().max(10).optional().nullable(),
     estado: estadoPasajeroVuelo.optional(),
-    registrado_por: id.optional().nullable(),
   })
   .strict();
 
@@ -303,7 +294,6 @@ const actualizarPasajeroVuelo = z
     id_itinerario: id.optional().nullable(),
     numero_asiento: z.string().max(10).optional().nullable(),
     estado: estadoPasajeroVuelo.optional(),
-    registrado_por: id.optional().nullable(),
   })
   .strict();
 
@@ -379,18 +369,6 @@ const crearEquipajeVuelo = z
     id_vuelo: id,
     id_banda_origen: id.optional().nullable(),
     id_banda_destino: id.optional().nullable(),
-    orden_vuelo: z.coerce.number().int().min(1).optional(),
-    registrado_por: id.optional().nullable(),
-  })
-  .strict();
-
-const actualizarEquipajeVuelo = z
-  .object({
-    id_banda_origen: id.optional().nullable(),
-    id_banda_destino: id.optional().nullable(),
-    orden_vuelo: z.coerce.number().int().min(1).optional(),
-    estado: estadoEquipajeVuelo.optional(),
-    registrado_por: id.optional().nullable(),
   })
   .strict();
 
@@ -473,7 +451,6 @@ module.exports = {
   cambiarBandaEquipaje,
   cambiarEstadoEquipaje,
   crearEquipajeVuelo,
-  actualizarEquipajeVuelo,
   crearNotificacion,
   actualizarNotificacion,
   crearHistorialVuelo,

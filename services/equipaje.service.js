@@ -264,6 +264,12 @@ const cambiarBanda = async ({ idEquipaje, datos, contexto }) => {
       );
     }
 
+    // Cambiar de banda implica pasar a EN_BANDA, así que debe respetar la
+    // máquina de estados. Si ya está EN_BANDA solo se reasigna la banda.
+    if (equipaje.estado !== 'EN_BANDA') {
+      validarTransicionEquipaje(equipaje.estado, 'EN_BANDA');
+    }
+
     const banda = await validarBanda(datos.id_banda, transaction);
     const estadoAnterior = equipaje.estado;
 
