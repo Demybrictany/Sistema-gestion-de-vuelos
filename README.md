@@ -2,7 +2,7 @@
 
 Sistema para la gestión de **vuelos, pasajeros y equipaje** del Aeropuerto Internacional de la Ciudad de México (AICM). Administra puertas de embarque, bandas de equipaje, itinerarios, escalas, notificaciones, historial y auditoría.
 
-**Versión:** `v1.1.1`
+**Versión:** `v1.2.0`
 **Repositorio:** https://github.com/Demybrictany/Sistema-gestion-de-vuelos
 **Equipo:** Juanjo, Demy
 
@@ -19,7 +19,18 @@ El sistema modela la operación del aeropuerto:
 - Cada operación relevante queda registrada en el historial y en la auditoría.
 - El catálogo incluye **25 puertas de embarque**, 10 bandas, 6 aeropuertos y datos de ejemplo.
 
-El panel gráfico en tiempo real, la mensajería asíncrona, los reportes y el agente de IA se desarrollarán en las siguientes versiones (ver [Hoja de ruta](#hoja-de-ruta)).
+Incluye **16 reportes de negocio** con filtros y agregaciones, exportables a Excel y PDF, y **vistas de solo lectura para Power BI**. El panel gráfico en tiempo real, la mensajería asíncrona y el agente de IA se desarrollarán en las siguientes versiones (ver [Hoja de ruta](#hoja-de-ruta)).
+
+---
+
+## Novedades de la v1.2.0
+
+- **Módulo de reportería:** 16 reportes del dominio con filtros (fechas, estados, aeropuertos, puertas, bandas, usuarios) y agregaciones (totales, agrupamientos y porcentajes).
+- **Exportación:** cada reporte se descarga en **Excel (`.xlsx`)** y **PDF** desde `GET /api/reportes/:clave/exportar?formato=excel|pdf`.
+- **Catálogo de reportes:** `GET /api/reportes` describe cada reporte, sus filtros y sus columnas.
+- **Power BI:** 9 vistas `bi_*` de solo lectura, documentación de conexión y usuario de lectura restringido en [`docs/POWER_BI.md`](docs/POWER_BI.md).
+- **Script de vistas:** `npm run db:views` recrea las vistas sin borrar datos.
+- **Pruebas de reportería:** `npm run test:reportes` verifica los 16 reportes y las exportaciones.
 
 ---
 
@@ -64,6 +75,8 @@ El panel gráfico en tiempo real, la mensajería asíncrona, los reportes y el a
 | Base de datos | PostgreSQL 14+ (local o [Neon](https://neon.tech)) |
 | Validación | Zod 4 |
 | Autenticación | JWT + bcryptjs |
+| Reportería | ExcelJS (Excel) + PDFKit (PDF) |
+| Business Intelligence | PostgreSQL views + Power BI |
 | Tiempo real | Socket.io (reservado para la siguiente versión) |
 
 ---
@@ -78,13 +91,19 @@ El panel gráfico en tiempo real, la mensajería asíncrona, los reportes y el a
 │   ├── database.js             # Conexión Sequelize (PostgreSQL)
 │   ├── postgres/
 │   │   ├── schema.sql          # Esquema PostgreSQL (16 tablas)
-│   │   └── seed.sql            # Datos iniciales
+│   │   ├── seed.sql            # Datos iniciales
+│   │   └── views_bi.sql        # Vistas de solo lectura para Power BI
 │   └── legacy/
 │       └── scrip-sistema-vuelos.sql  # Dump MySQL original
+├── docs/
+│   └── POWER_BI.md             # Conexión y modelo para Power BI
 ├── lib/
 │   ├── async-handler.js        # Envoltura para errores async
 │   ├── contexto.js             # AsyncLocalStorage (usuario/IP por request)
-│   └── errores.js              # ErrorConEstado
+│   ├── errores.js              # ErrorConEstado
+│   └── exportar/
+│       ├── excel.js            # Exportación XLSX
+│       └── pdf.js              # Exportación PDF
 ├── middlewares/
 │   ├── auth.middleware.js      # verificarToken y permitirRoles
 │   ├── contexto.middleware.js  # Contexto de auditoría
@@ -94,9 +113,13 @@ El panel gráfico en tiempo real, la mensajería asíncrona, los reportes y el a
 │   ├── auditoria.hooks.js      # Auditoría automática
 │   └── index.js                # Carga de modelos y hooks
 ├── routes/                     # Endpoints REST
-├── services/                   # Lógica de negocio y transacciones
+├── services/                   # Lógica de negocio, transacciones y reportes
+├── scripts/
+│   ├── init-db.js              # Esquema + seed + vistas
+│   └── init-views.js           # Solo vistas de BI
 ├── tests/
-│   └── api.v1.1.0.js           # Pruebas de integración
+│   ├── api.v1.1.0.js           # Pruebas de integración
+│   └── reportes.v1.2.0.js      # Pruebas de reportería
 ├── validators/
 │   └── schemas.js              # Esquemas Zod
 ├── .env.example
@@ -461,6 +484,69 @@ curl -X POST http://localhost:3000/api/equipajes/2/tramos \
 
 ---
 
+## Reportería y Power BI
+
+### Endpoints
+
+| Método | Ruta | Rol | Descripción |
+|---|---|---|---|
+| `GET` | `/api/reportes` | ADMIN, SECRETARIO | Catálogo con claves, filtros y columnas. |
+| `GET` | `/api/reportes/:clave` | ADMIN, SECRETARIO | Ejecuta el reporte y devuelve filas, columnas y totales en JSON. |
+| `GET` | `/api/reportes/:clave/exportar?formato=excel` | ADMIN, SECRETARIO | Descarga el reporte en `.xlsx`. |
+| `GET` | `/api/reportes/:clave/exportar?formato=pdf` | ADMIN, SECRETARIO | Descarga el reporte en `.pdf`. |
+
+Filtros comunes: `fecha_desde` y `fecha_hasta` (`YYYY-MM-DD`), `estado`, `zona`, `id_aeropuerto`, `id_puerta`, `id_banda`, `id_usuario`, `id_vuelo`, `id_pasajero`, `tipo`, `campo`, `accion`, `estado_pasajero` y `estado_reserva`. Cada reporte indica sus filtros en el catálogo.
+
+### Reportes disponibles (16)
+
+| Clave | Reporte | Filtros | Agregaciones |
+|---|---|---|---|
+| `vuelos-por-estado` | Vuelos por estado | fechas, estado | Vuelos y capacidad por estado. |
+| `vuelos-por-destino` | Vuelos por destino | fechas, estado | Vuelos, capacidad y pasajeros por aeropuerto. |
+| `vuelos-por-origen` | Vuelos por origen | fechas, estado | Vuelos, capacidad y pasajeros por aeropuerto. |
+| `ocupacion-por-puerta` | Ocupación por puerta | fechas, zona, puerta | Vuelos, pasajeros, capacidad y % de ocupación. |
+| `ocupacion-por-vuelo` | Ocupación por vuelo | fechas, estado, aeropuerto, puerta | Pasajeros, disponibles y % de ocupación. |
+| `demanda-por-ruta` | Demanda por ruta | fechas, estado | Vuelos, pasajeros y equipajes por origen–destino. |
+| `equipaje-por-estado` | Equipaje por estado | fechas, estado | Equipajes, peso total y promedio. |
+| `equipaje-por-banda` | Equipaje por banda | fechas, zona, banda | Equipajes y peso por banda. |
+| `equipaje-conexiones` | Equipaje en conexión | fechas, estado | Tramos, ruta y peso por equipaje. |
+| `incidencias-equipaje` | Incidencias de equipaje | fechas, tipo | Extraviados y dañados por mes. |
+| `notificaciones-por-tipo` | Notificaciones por tipo | fechas, tipo | Total, leídas, pendientes y % de lectura. |
+| `pasajeros-por-nacionalidad` | Pasajeros por nacionalidad | fechas, estado | Pasajeros y reservas por nacionalidad. |
+| `reservas-por-estado` | Reservas por estado | fechas, estado de reserva | Reservas, vuelos, pasajeros y participación. |
+| `escalas-por-aeropuerto` | Escalas por aeropuerto | fechas, estado | Escalas por estado operativo. |
+| `cambios-vuelos` | Cambios en vuelos | fechas, campo | Cambios y vuelos afectados por mes. |
+| `actividad-usuarios` | Actividad por usuario | fechas, usuario, acción | Operaciones y tablas afectadas. |
+
+### Ejemplos
+
+```bash
+# JSON con filtros
+curl "http://localhost:3000/api/reportes/ocupacion-por-vuelo?fecha_desde=2026-10-01&fecha_hasta=2026-10-31" \
+  -H "Authorization: Bearer <token>"
+
+# Descargas
+curl -o ocupacion.xlsx \
+  "http://localhost:3000/api/reportes/ocupacion-por-vuelo/exportar?formato=excel" \
+  -H "Authorization: Bearer <token>"
+
+curl -o ocupacion.pdf \
+  "http://localhost:3000/api/reportes/ocupacion-por-vuelo/exportar?formato=pdf" \
+  -H "Authorization: Bearer <token>"
+```
+
+### Power BI
+
+La base incluye 9 vistas de solo lectura (`bi_vuelos`, `bi_pasajeros_vuelo`, `bi_equipajes`, `bi_equipaje_tramos`, `bi_notificaciones`, `bi_historial_vuelo`, `bi_historial_equipaje`, `bi_auditoria` y `bi_kpis_diarios`). Se recrean con:
+
+```bash
+npm run db:views
+```
+
+La guía completa de conexión, usuario de solo lectura, relaciones y tableros sugeridos está en [`docs/POWER_BI.md`](docs/POWER_BI.md).
+
+---
+
 ## Usuarios de prueba
 
 Datos sembrados **solo para desarrollo**. Cámbialos antes de desplegar.
@@ -482,8 +568,11 @@ Datos sembrados **solo para desarrollo**. Cámbialos antes de desplegar.
 |---|---|
 | `npm start` | Inicia el servidor. |
 | `npm run dev` | Inicia con recarga automática (nodemon). |
-| `npm run db:init` | Crea el esquema y carga los datos iniciales. |
-| `npm test` / `npm run test:api` | Ejecuta las pruebas de integración de la API. |
+| `npm run db:init` | Crea el esquema, carga los datos iniciales y crea las vistas de BI. |
+| `npm run db:views` | Recrea solo las vistas de Power BI (no borra datos). |
+| `npm test` | Ejecuta las pruebas de API y de reportería. |
+| `npm run test:api` | Pruebas de integración de la API. |
+| `npm run test:reportes` | Pruebas del catálogo, filtros y exportaciones. |
 
 ---
 
@@ -491,7 +580,7 @@ Datos sembrados **solo para desarrollo**. Cámbialos antes de desplegar.
 
 - `main`: versión estable.
 - `juanjo`, `Demy`: ramas de desarrollo.
-- `feature/v1.1.0`: rama de esta versión.
+- `feature/v1.2.0-reportes`: rama de esta versión.
 - Cada módulo se integra mediante **Pull Request**.
 - Versionado semántico (`MAJOR.MINOR.PATCH`).
 
@@ -500,6 +589,7 @@ Datos sembrados **solo para desarrollo**. Cámbialos antes de desplegar.
 | `v1.0.0` | Backend base y migración a PostgreSQL. |
 | `v1.1.0` | Seguridad, validaciones, lógica de negocio, notificaciones, historial y auditoría automáticos. |
 | `v1.1.1` | Cupo de pasajeros en transacción, tramos inmutables, estados de equipaje y `/health`. |
+| `v1.2.0` | 16 reportes con filtros, exportación Excel/PDF y vistas para Power BI. |
 
 ### Convención de commits
 
@@ -514,11 +604,10 @@ chore: tareas de mantenimiento
 
 ---
 
-## Limitaciones conocidas de v1.1.1
+## Limitaciones conocidas de v1.2.0
 
 - Sin frontend ni panel gráfico en tiempo real.
 - Sin mensajería asíncrona (RabbitMQ/Kafka): las notificaciones se guardan en la base, todavía no se envían por correo/push.
-- Sin reportes exportables a Excel/PDF ni integración con Power BI.
 - Sin agente de IA ni RAG.
 - Sin despliegue del backend en la nube (la base ya puede estar en Neon).
 - Pruebas de integración únicamente; no hay pruebas unitarias.
@@ -532,8 +621,9 @@ chore: tareas de mantenimiento
 |---|---|
 | **v1.1.0** | Seguridad, validaciones, máquina de estados, conflicto de puertas, equipaje en conexión, notificaciones, historial y auditoría. |
 | **v1.1.1** | Endurecimiento de invariantes: cupo concurrente, tramos inmutables, transiciones de equipaje y `/health`. |
-| v1.2.0 | Panel gráfico en tiempo real (25 puertas), frontend y WebSocket/SSE. |
-| v1.3.0 | RabbitMQ/Kafka, 15 reportes con Excel/PDF, Power BI, agente de IA + RAG y despliegue en producción. |
+| **v1.2.0** | Reportería avanzada (16 reportes con Excel/PDF) y vistas para Power BI. |
+| v1.3.0 | RabbitMQ/Kafka, agente de IA + RAG y panel gráfico en tiempo real con frontend. |
+| v1.4.0 | Despliegue en producción y manual técnico. |
 
 ---
 

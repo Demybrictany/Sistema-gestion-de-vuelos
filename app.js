@@ -31,6 +31,7 @@ const notificacionRoutes = require('./routes/notificacion.routes');
 const historialVueloRoutes = require('./routes/historial_vuelo.routes');
 const historialEquipajeRoutes = require('./routes/historial_equipaje.routes');
 const auditoriaRoutes = require('./routes/auditoria.routes');
+const reportesRoutes = require('./routes/reportes.routes');
 
 const app = express();
 
@@ -51,7 +52,7 @@ app.use(express.json({ limit: '1mb' }));
 app.get('/', (req, res) => {
   res.json({
     mensaje: 'API del Sistema de Vuelos funcionando correctamente',
-    version: '1.1.1',
+    version: '1.2.0',
   });
 });
 
@@ -92,6 +93,7 @@ app.use('/api/notificaciones', notificacionRoutes);
 app.use('/api/historial-vuelo', staff, historialVueloRoutes);
 app.use('/api/historial-equipaje', staff, historialEquipajeRoutes);
 app.use('/api/auditoria', soloAdmin, auditoriaRoutes);
+app.use('/api/reportes', staff, reportesRoutes);
 
 // ==============================
 // 404 Y MANEJO CENTRAL DE ERRORES

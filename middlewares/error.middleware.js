@@ -31,6 +31,13 @@ const manejarErrores = (error, req, res, next) => {
     });
   }
 
+  // Valores de fecha u hora fuera de rango o con formato inválido.
+  if (['22007', '22008', '22P02'].includes(codigo)) {
+    return res.status(400).json({
+      mensaje: 'Formato de fecha, hora o número inválido',
+    });
+  }
+
   if (
     error.name === 'SequelizeForeignKeyConstraintError' ||
     codigo === '23503' ||
