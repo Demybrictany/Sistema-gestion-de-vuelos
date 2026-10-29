@@ -18,7 +18,9 @@ const modelos = {
 };
 
 const { activarAuditoria } = require('./auditoria.hooks');
+const { activarEventosPanel } = require('./panel.hooks');
 
 activarAuditoria(modelos);
+activarEventosPanel(modelos);
 
 module.exports = modelos;
