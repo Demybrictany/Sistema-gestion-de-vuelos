@@ -2,7 +2,7 @@
 
 Sistema para la gestión de **vuelos, pasajeros y equipaje** del Aeropuerto Internacional de la Ciudad de México (AICM). Administra puertas de embarque, bandas de equipaje, itinerarios, escalas, notificaciones, historial y auditoría.
 
-**Versión:** `v1.2.0`
+**Versión:** `v1.3.0`
 **Repositorio:** https://github.com/Demybrictany/Sistema-gestion-de-vuelos
 **Equipo:** Juanjo, Demy
 
@@ -19,7 +19,18 @@ El sistema modela la operación del aeropuerto:
 - Cada operación relevante queda registrada en el historial y en la auditoría.
 - El catálogo incluye **25 puertas de embarque**, 10 bandas, 6 aeropuertos y datos de ejemplo.
 
-Incluye **16 reportes de negocio** con filtros y agregaciones, exportables a Excel y PDF, y **vistas de solo lectura para Power BI**. El panel gráfico en tiempo real, la mensajería asíncrona y el agente de IA se desarrollarán en las siguientes versiones (ver [Hoja de ruta](#hoja-de-ruta)).
+Incluye **16 reportes de negocio** con filtros y agregaciones, exportables a Excel y PDF, **vistas de solo lectura para Power BI** y un **panel operativo en tiempo real** expuesto por API REST y Socket.IO. El frontend del panel, la mensajería asíncrona y el agente de IA se desarrollarán en las siguientes versiones (ver [Hoja de ruta](#hoja-de-ruta)).
+
+---
+
+## Novedades de la v1.3.0
+
+- **Panel operativo:** `GET /api/panel` devuelve en una sola respuesta los KPIs del aeropuerto, las 25 puertas con su vuelo asignado, las 10 bandas, los vuelos serializados y las notificaciones recientes.
+- **Tiempo real con Socket.IO:** cualquier alta, modificación o baja en vuelos, puertas, bandas, equipajes, reservas o notificaciones emite `panel:actualizar` a los clientes conectados. Las ráfagas de cambios se agrupan en una sola señal.
+- **Transacciones seguras:** si el cambio ocurre dentro de una transacción, la señal se emite después del `commit`, nunca antes.
+- **Autenticación del panel:** la API exige rol `ADMINISTRADOR` o `SECRETARIO` y la conexión Socket.IO valida el JWT en el handshake con los mismos roles.
+- **CORS configurable:** nueva variable `CORS_ORIGIN` (lista separada por comas) para el frontend y el panel.
+- **Pruebas del panel:** `npm run test:panel` verifica permisos, estructura de KPIs, 25 puertas, 10 bandas y el handshake de Socket.IO.
 
 ---
 
@@ -77,7 +88,7 @@ Incluye **16 reportes de negocio** con filtros y agregaciones, exportables a Exc
 | Autenticación | JWT + bcryptjs |
 | Reportería | ExcelJS (Excel) + PDFKit (PDF) |
 | Business Intelligence | PostgreSQL views + Power BI |
-| Tiempo real | Socket.io (reservado para la siguiente versión) |
+| Tiempo real | Socket.IO 4 (panel operativo) |
 
 ---
 
@@ -100,7 +111,10 @@ Incluye **16 reportes de negocio** con filtros y agregaciones, exportables a Exc
 ├── lib/
 │   ├── async-handler.js        # Envoltura para errores async
 │   ├── contexto.js             # AsyncLocalStorage (usuario/IP por request)
+│   ├── cors.js                 # Orígenes permitidos para el frontend/panel
 │   ├── errores.js              # ErrorConEstado
+│   ├── eventos-panel.js        # Bus de cambios con debounce para el panel
+│   ├── socket.js               # Socket.IO: autenticación y emisión en vivo
 │   └── exportar/
 │       ├── excel.js            # Exportación XLSX
 │       └── pdf.js              # Exportación PDF
@@ -111,7 +125,8 @@ Incluye **16 reportes de negocio** con filtros y agregaciones, exportables a Exc
 │   └── validar.middleware.js   # Validación con Zod
 ├── models/                     # Modelos y asociaciones
 │   ├── auditoria.hooks.js      # Auditoría automática
-│   └── index.js                # Carga de modelos y hooks
+│   ├── index.js                # Carga de modelos y hooks
+│   └── panel.hooks.js          # Eventos de tiempo real del panel
 ├── routes/                     # Endpoints REST
 ├── services/                   # Lógica de negocio, transacciones y reportes
 ├── scripts/
@@ -119,6 +134,7 @@ Incluye **16 reportes de negocio** con filtros y agregaciones, exportables a Exc
 │   └── init-views.js           # Solo vistas de BI
 ├── tests/
 │   ├── api.v1.1.0.js           # Pruebas de integración
+│   ├── panel.v1.3.0.js         # Pruebas del panel operativo
 │   └── reportes.v1.2.0.js      # Pruebas de reportería
 ├── validators/
 │   └── schemas.js              # Esquemas Zod
@@ -238,6 +254,7 @@ El script crea y modifica datos; usa una base de pruebas o vuelve a ejecutar `np
 | `JWT_SECRET` | Sí | Secreto para firmar los tokens. |
 | `JWT_EXPIRES_IN` | No | Duración del token (por defecto `8h`). |
 | `PORT` | No | Puerto del servidor (por defecto `3000`). |
+| `CORS_ORIGIN` | No | Orígenes permitidos para el frontend/panel, separados por comas. `*` en desarrollo. |
 
 Genera un secreto seguro:
 
@@ -455,6 +472,42 @@ Cada recurso expone `GET /`, `GET /:id`, `POST /`, `PUT /:id` y, cuando aplica, 
 | `GET` | `/api/auditoria/usuario/:idUsuario` | ADMIN | Auditoría de un usuario. |
 | `GET` | `/api/historial-vuelo/vuelo/:idVuelo` | ADMIN, SECRETARIO | Historial de un vuelo. |
 | `GET` | `/api/historial-equipaje/equipaje/:idEquipaje` | ADMIN, SECRETARIO | Historial de un equipaje. |
+| `GET` | `/api/panel` | ADMIN, SECRETARIO | Panel operativo: KPIs, puertas, bandas, vuelos y notificaciones. |
+
+### Panel operativo en tiempo real
+
+`GET /api/panel` devuelve todo lo que necesita el tablero en una sola llamada:
+
+```json
+{
+  "generado_en": "2026-10-29T12:00:00.000Z",
+  "kpis": { "vuelos_hoy": 4, "puertas_ocupadas": 3, "puertas_total": 25, "...": 0 },
+  "vuelos": [ { "id_vuelo": 1, "codigo_vuelo": "...", "ocupacion_pct": 72.5 } ],
+  "puertas": [ { "numero": "A1", "estado_operativo": "OCUPADA", "vuelo": {} } ],
+  "bandas": [ { "numero": "B1", "estado_operativo": "EN_USO", "equipajes": 3 } ],
+  "notificaciones": [ { "tipo": "CAMBIO_PUERTA", "pasajero": "Carlos Martinez" } ]
+}
+```
+
+El cliente se conecta a Socket.IO con el mismo JWT:
+
+```js
+import { io } from 'socket.io-client';
+
+const socket = io('http://localhost:3000', {
+  auth: { token },
+});
+
+socket.on('panel:actualizar', async () => {
+  const panel = await fetch('/api/panel', {
+    headers: { Authorization: `Bearer ${token}` },
+  }).then((res) => res.json());
+
+  renderPanel(panel);
+});
+```
+
+Solo `ADMINISTRADOR` y `SECRETARIO` pueden conectarse. Cada cambio en vuelos, puertas, bandas, equipajes, reservas o notificaciones emite `panel:actualizar`; el cliente vuelve a consultar `GET /api/panel`.
 
 ### Ejemplos
 
@@ -570,9 +623,10 @@ Datos sembrados **solo para desarrollo**. Cámbialos antes de desplegar.
 | `npm run dev` | Inicia con recarga automática (nodemon). |
 | `npm run db:init` | Crea el esquema, carga los datos iniciales y crea las vistas de BI. |
 | `npm run db:views` | Recrea solo las vistas de Power BI (no borra datos). |
-| `npm test` | Ejecuta las pruebas de API y de reportería. |
+| `npm test` | Ejecuta las pruebas de API, reportería y panel. |
 | `npm run test:api` | Pruebas de integración de la API. |
 | `npm run test:reportes` | Pruebas del catálogo, filtros y exportaciones. |
+| `npm run test:panel` | Pruebas del panel operativo y del handshake de Socket.IO. |
 
 ---
 
@@ -580,7 +634,7 @@ Datos sembrados **solo para desarrollo**. Cámbialos antes de desplegar.
 
 - `main`: versión estable.
 - `juanjo`, `Demy`: ramas de desarrollo.
-- `feature/v1.2.0-reportes`: rama de esta versión.
+- `feature/v1.3.0-panel`: rama de esta versión.
 - Cada módulo se integra mediante **Pull Request**.
 - Versionado semántico (`MAJOR.MINOR.PATCH`).
 
@@ -590,6 +644,7 @@ Datos sembrados **solo para desarrollo**. Cámbialos antes de desplegar.
 | `v1.1.0` | Seguridad, validaciones, lógica de negocio, notificaciones, historial y auditoría automáticos. |
 | `v1.1.1` | Cupo de pasajeros en transacción, tramos inmutables, estados de equipaje y `/health`. |
 | `v1.2.0` | 16 reportes con filtros, exportación Excel/PDF y vistas para Power BI. |
+| `v1.3.0` | Panel operativo por API REST y Socket.IO, CORS configurable y pruebas del panel. |
 
 ### Convención de commits
 
@@ -604,14 +659,15 @@ chore: tareas de mantenimiento
 
 ---
 
-## Limitaciones conocidas de v1.2.0
+## Limitaciones conocidas de v1.3.0
 
-- Sin frontend ni panel gráfico en tiempo real.
+- Sin frontend: el panel expone API y Socket.IO, pero todavía no incluye una interfaz web.
 - Sin mensajería asíncrona (RabbitMQ/Kafka): las notificaciones se guardan en la base, todavía no se envían por correo/push.
 - Sin agente de IA ni RAG.
 - Sin despliegue del backend en la nube (la base ya puede estar en Neon).
 - Pruebas de integración únicamente; no hay pruebas unitarias.
 - Sin refresh tokens, bloqueo por intentos fallidos ni rate limiting.
+- El panel no filtra por fecha en el servidor: devuelve los últimos 300 vuelos y el cliente acota la vista.
 
 ---
 
@@ -622,8 +678,10 @@ chore: tareas de mantenimiento
 | **v1.1.0** | Seguridad, validaciones, máquina de estados, conflicto de puertas, equipaje en conexión, notificaciones, historial y auditoría. |
 | **v1.1.1** | Endurecimiento de invariantes: cupo concurrente, tramos inmutables, transiciones de equipaje y `/health`. |
 | **v1.2.0** | Reportería avanzada (16 reportes con Excel/PDF) y vistas para Power BI. |
-| v1.3.0 | RabbitMQ/Kafka, agente de IA + RAG y panel gráfico en tiempo real con frontend. |
-| v1.4.0 | Despliegue en producción y manual técnico. |
+| **v1.3.0** | Panel operativo por API REST y Socket.IO, CORS configurable y pruebas del panel. |
+| v1.4.0 | Frontend del panel con visualización gráfica de puertas y KPIs. |
+| v1.5.0 | RabbitMQ/Kafka y agente de IA + RAG. |
+| v1.6.0 | Despliegue en producción y manual técnico. |
 
 ---
 
