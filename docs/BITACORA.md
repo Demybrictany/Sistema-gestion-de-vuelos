@@ -24,7 +24,8 @@
   - `npm run test:reportes` → **29 PASS, 0 FAIL**
   - `GET /api/reportes` → 16 reportes; exportación Excel (7 360 bytes) y PDF (2 538 bytes) con HTTP 200.
 - **Versión:** MINOR — `1.2.0` → `1.3.0`: funcionalidad nueva compatible (panel, Socket.IO, `CORS_ORIGIN`, script de pruebas). No rompe contratos existentes.
-- **Commits/PR:** pendiente de ejecutar por el estudiante (ver comandos preparados al final de la sesión).
+- **Commits/PR:** `473e85c` (panel), `5014130` (release) y tag `v1.3.0`; PR #6 apilado sobre #5.
+  - Corrección: esta entrada se redactó antes de ejecutar los commits; aquí quedan registrados tras el push. La fusión de #5 y #6 sigue pendiente de la revisión requerida en `main`.
 - **Pendiente / siguiente paso:** frontend del panel; RabbitMQ/Kafka; agente de IA + RAG; `.pbix` de Power BI; despliegue y manual técnico.
 - **Decisiones o riesgos:**
   - Socket.IO emite solo la señal `panel:actualizar`; el cliente vuelve a consultar `GET /api/panel`. Menos acoplamiento y un único contrato de datos.
