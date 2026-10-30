@@ -2,7 +2,7 @@
 
 Sistema para la gestión de **vuelos, pasajeros y equipaje** del Aeropuerto Internacional de la Ciudad de México (AICM). Administra puertas de embarque, bandas de equipaje, itinerarios, escalas, notificaciones, historial y auditoría.
 
-**Versión:** `v1.3.0`
+**Versión:** `v1.4.0`
 **Repositorio:** https://github.com/Demybrictany/Sistema-gestion-de-vuelos
 **Equipo:** Juanjo, Demy
 
@@ -19,7 +19,18 @@ El sistema modela la operación del aeropuerto:
 - Cada operación relevante queda registrada en el historial y en la auditoría.
 - El catálogo incluye **25 puertas de embarque**, 10 bandas, 6 aeropuertos y datos de ejemplo.
 
-Incluye **16 reportes de negocio** con filtros y agregaciones, exportables a Excel y PDF, **vistas de solo lectura para Power BI** y un **panel operativo en tiempo real** expuesto por API REST y Socket.IO. El frontend del panel, la mensajería asíncrona y el agente de IA se desarrollarán en las siguientes versiones (ver [Hoja de ruta](#hoja-de-ruta)).
+Incluye **16 reportes de negocio** con filtros y agregaciones, exportables a Excel y PDF, **vistas de solo lectura para Power BI**, un **panel operativo en tiempo real** expuesto por API REST y Socket.IO, y un **frontend web** con inicio de sesión, mapa de puertas, vuelos y reportería. La mensajería asíncrona y el agente de IA se desarrollarán en las siguientes versiones (ver [Hoja de ruta](#hoja-de-ruta)).
+
+---
+
+## Novedades de la v1.4.0
+
+- **Frontend del panel:** aplicación React + Vite en [`frontend/`](frontend/) con inicio de sesión JWT y control de roles.
+- **Tablero operativo:** KPIs, mapa de las 25 puertas por zona con detalle del vuelo asignado, vuelos del tablero, bandas de equipaje y avisos recientes.
+- **Tiempo real en la interfaz:** el tablero escucha `panel:actualizar` y se refresca sin recargar; si Socket.IO se desconecta, hay respaldo cada 30 segundos.
+- **Vista de vuelos:** búsqueda por código, ciudad o puerta, filtro por estado y ocupación por vuelo.
+- **Reportería en pantalla:** catálogo de los 16 reportes, filtros dinámicos, totales y descarga directa en Excel y PDF.
+- **Diseño accesible:** estados con icono y etiqueta (nunca solo color), modo claro/oscuro, foco visible y tablas con encabezados y cifras tabulares.
 
 ---
 
@@ -82,6 +93,7 @@ Incluye **16 reportes de negocio** con filtros y agregaciones, exportables a Exc
 |---|---|
 | Runtime | Node.js 18+ (CommonJS) |
 | Framework | Express 5 |
+| Frontend | React 18 + Vite 5 |
 | ORM | Sequelize 6 |
 | Base de datos | PostgreSQL 14+ (local o [Neon](https://neon.tech)) |
 | Validación | Zod 4 |
@@ -97,6 +109,17 @@ Incluye **16 reportes de negocio** con filtros y agregaciones, exportables a Exc
 ```
 .
 ├── app.js                      # Entrada, middlewares globales y rutas
+├── frontend/                   # Panel web (React + Vite)
+│   ├── index.html
+│   ├── vite.config.js          # Proxy /api y /socket.io
+│   ├── src/
+│   │   ├── App.jsx             # Sesión, navegación y vistas
+│   │   ├── api.js              # Cliente HTTP y descargas
+│   │   ├── auth.jsx            # Contexto JWT
+│   │   ├── hooks/              # usePanel y useSocket
+│   │   ├── components/         # Login, KPIs, mapa, tablas, reportes
+│   │   └── styles.css          # Paleta, modo oscuro y responsive
+│   └── README.md
 ├── controllers/                # Controladores HTTP
 ├── db/
 │   ├── database.js             # Conexión Sequelize (PostgreSQL)
@@ -228,7 +251,19 @@ npm start       # producción
 
 La API queda en `http://localhost:3000`.
 
-### 5. Ejecutar las pruebas de integración
+### 5. Ejecutar el frontend
+
+En otra terminal, con el backend levantado:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Abre `http://localhost:5173` e inicia sesión con `admin` / `Admin123!`. Vite hace proxy de `/api` y `/socket.io` hacia `http://localhost:3000`. La guía del frontend está en [`frontend/README.md`](frontend/README.md).
+
+### 6. Ejecutar las pruebas de integración
 
 Con el servidor levantado y una base recién inicializada:
 
@@ -634,7 +669,7 @@ Datos sembrados **solo para desarrollo**. Cámbialos antes de desplegar.
 
 - `main`: versión estable.
 - `juanjo`, `Demy`: ramas de desarrollo.
-- `feature/v1.3.0-panel`: rama de esta versión.
+- `feature/v1.4.0-frontend`: rama de esta versión.
 - Cada módulo se integra mediante **Pull Request**.
 - Versionado semántico (`MAJOR.MINOR.PATCH`).
 
@@ -645,6 +680,7 @@ Datos sembrados **solo para desarrollo**. Cámbialos antes de desplegar.
 | `v1.1.1` | Cupo de pasajeros en transacción, tramos inmutables, estados de equipaje y `/health`. |
 | `v1.2.0` | 16 reportes con filtros, exportación Excel/PDF y vistas para Power BI. |
 | `v1.3.0` | Panel operativo por API REST y Socket.IO, CORS configurable y pruebas del panel. |
+| `v1.4.0` | Frontend React + Vite: login, panel en vivo, mapa de puertas, vuelos y reportería. |
 
 ### Convención de commits
 
@@ -659,9 +695,9 @@ chore: tareas de mantenimiento
 
 ---
 
-## Limitaciones conocidas de v1.3.0
+## Limitaciones conocidas de v1.4.0
 
-- Sin frontend: el panel expone API y Socket.IO, pero todavía no incluye una interfaz web.
+- El frontend es de consulta y reportería: el alta y edición de vuelos, pasajeros y equipajes se hacen por la API.
 - Sin mensajería asíncrona (RabbitMQ/Kafka): las notificaciones se guardan en la base, todavía no se envían por correo/push.
 - Sin agente de IA ni RAG.
 - Sin despliegue del backend en la nube (la base ya puede estar en Neon).
@@ -679,7 +715,7 @@ chore: tareas de mantenimiento
 | **v1.1.1** | Endurecimiento de invariantes: cupo concurrente, tramos inmutables, transiciones de equipaje y `/health`. |
 | **v1.2.0** | Reportería avanzada (16 reportes con Excel/PDF) y vistas para Power BI. |
 | **v1.3.0** | Panel operativo por API REST y Socket.IO, CORS configurable y pruebas del panel. |
-| v1.4.0 | Frontend del panel con visualización gráfica de puertas y KPIs. |
+| **v1.4.0** | Frontend React + Vite con panel en vivo, mapa de puertas, vuelos y reportería. |
 | v1.5.0 | RabbitMQ/Kafka y agente de IA + RAG. |
 | v1.6.0 | Despliegue en producción y manual técnico. |
 
