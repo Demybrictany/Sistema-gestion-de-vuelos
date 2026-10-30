@@ -2,19 +2,35 @@ const { z } = require('zod');
 
 const id = z.coerce.number().int().positive();
 
+// Comprueba que el día exista realmente (rechaza 2026-02-31, 2026-13-01, etc.).
+const esFechaReal = (valor) => {
+  const [anio, mes, dia] = valor.split('-').map(Number);
+  const fecha = new Date(Date.UTC(anio, mes - 1, dia));
+
+  return (
+    fecha.getUTCFullYear() === anio &&
+    fecha.getUTCMonth() === mes - 1 &&
+    fecha.getUTCDate() === dia
+  );
+};
+
 const fecha = z
   .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato esperado: YYYY-MM-DD');
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato esperado: YYYY-MM-DD')
+  .refine(esFechaReal, 'La fecha no existe en el calendario');
 
 const hora = z
   .string()
-  .regex(/^\d{2}:\d{2}(:\d{2})?$/, 'Formato esperado: HH:MM o HH:MM:SS')
+  .regex(
+    /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/,
+    'Formato esperado: HH:MM o HH:MM:SS'
+  )
   .transform((valor) => (valor.length === 5 ? `${valor}:00` : valor));
 
 const fechaHora = z
   .string()
   .regex(
-    /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?$/,
+    /^\d{4}-\d{2}-\d{2}[ T]([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?$/,
     'Formato esperado: YYYY-MM-DD HH:MM[:SS]'
   )
   .transform((valor) => valor.replace(' ', 'T'));
@@ -419,7 +435,37 @@ const crearHistorialEquipaje = z
   })
   .strict();
 
+// ------------------------------------------------------------
+// Reportería
+// ------------------------------------------------------------
+const filtrosReporte = z
+  .object({
+    fecha_desde: fecha.optional(),
+    fecha_hasta: fecha.optional(),
+    estado: z.string().max(30).optional(),
+    estado_pasajero: z.string().max(20).optional(),
+    estado_reserva: z.string().max(30).optional(),
+    tipo: z.string().max(30).optional(),
+    campo: z.string().max(100).optional(),
+    accion: z.string().max(100).optional(),
+    zona: z.string().max(50).optional(),
+    id_aeropuerto: id.optional(),
+    id_puerta: id.optional(),
+    id_banda: id.optional(),
+    id_usuario: id.optional(),
+    id_vuelo: id.optional(),
+    id_pasajero: id.optional(),
+  })
+  .refine(
+    (datos) =>
+      !datos.fecha_desde ||
+      !datos.fecha_hasta ||
+      datos.fecha_desde <= datos.fecha_hasta,
+    { message: 'fecha_desde no puede ser posterior a fecha_hasta' }
+  );
+
 module.exports = {
+  filtrosReporte,
   login,
   crearRol,
   actualizarRol,
