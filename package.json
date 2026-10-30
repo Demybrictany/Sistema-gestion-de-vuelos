@@ -1,16 +1,17 @@
 {
   "name": "sistema-vuelos-backend",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Sistema de gestión de vuelos, pasajeros y equipaje del Aeropuerto Internacional de la Ciudad de México",
   "main": "app.js",
   "scripts": {
-    "test": "npm run test:api && npm run test:reportes",
+    "test": "npm run test:api && npm run test:reportes && npm run test:panel",
     "start": "node app.js",
     "dev": "nodemon app.js",
     "db:init": "node scripts/init-db.js",
     "db:views": "node scripts/init-views.js",
     "test:api": "node tests/api.v1.1.0.js",
-    "test:reportes": "node tests/reportes.v1.2.0.js"
+    "test:reportes": "node tests/reportes.v1.2.0.js",
+    "test:panel": "node tests/panel.v1.3.0.js"
   },
   "keywords": [
     "aeropuerto",
