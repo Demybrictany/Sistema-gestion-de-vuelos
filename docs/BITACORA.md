@@ -26,7 +26,8 @@
   - Móvil 390 px: `scrollWidth = innerWidth = 390`, sin desbordamiento horizontal.
   - Modo oscuro verificado por captura.
 - **Versión:** MINOR — `1.3.0` → `1.4.0`: frontend nuevo y compatible con la API existente.
-- **Commits/PR:** pendiente de registrar tras el push.
+- **Commits/PR:** `5f737f2` (frontend), `453bcff` (release) y tag `v1.4.0`; PR #8 hacia `main`, apilado sobre el PR #7.
+  - Corrección: la entrada se redactó antes del push; los hashes y el PR quedan registrados aquí.
 - **Pendiente / siguiente paso:** aprobar y fusionar el PR #7 (v1.3.0) y el de esta rama; RabbitMQ/Kafka; agente de IA + RAG; `.pbix` de Power BI; despliegue y manual técnico.
 - **Decisiones o riesgos:**
   - El frontend es de consulta y reportería; las altas y ediciones siguen por la API.
