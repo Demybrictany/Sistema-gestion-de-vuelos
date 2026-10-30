@@ -2,7 +2,10 @@ node_modules/
 .env
 .env.*
 !.env.example
+!frontend/.env.example
 npm-debug.log*
 *.log
 .DS_Store
 Thumbs.db
+frontend/dist/
+frontend/.env
