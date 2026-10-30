@@ -1,11 +1,15 @@
+const http = require('http');
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
 const sequelize = require('./db/database');
 
-// Registra las asociaciones y los hooks de auditoría automática.
+// Registra las asociaciones y los hooks de auditoría/eventos del panel.
 require('./models');
+
+const iniciarSocket = require('./lib/socket');
+const { obtenerOrigenes } = require('./lib/cors');
 
 const { verificarToken, permitirRoles } = require('./middlewares/auth.middleware');
 const contextoMiddleware = require('./middlewares/contexto.middleware');
@@ -32,6 +36,7 @@ const historialVueloRoutes = require('./routes/historial_vuelo.routes');
 const historialEquipajeRoutes = require('./routes/historial_equipaje.routes');
 const auditoriaRoutes = require('./routes/auditoria.routes');
 const reportesRoutes = require('./routes/reportes.routes');
+const panelRoutes = require('./routes/panel.routes');
 
 const app = express();
 
@@ -43,7 +48,7 @@ app.disable('x-powered-by');
 // MIDDLEWARES
 // ==============================
 app.set('trust proxy', 1);
-app.use(cors());
+app.use(cors({ origin: obtenerOrigenes() }));
 app.use(express.json({ limit: '1mb' }));
 
 // ==============================
@@ -94,6 +99,7 @@ app.use('/api/historial-vuelo', staff, historialVueloRoutes);
 app.use('/api/historial-equipaje', staff, historialEquipajeRoutes);
 app.use('/api/auditoria', soloAdmin, auditoriaRoutes);
 app.use('/api/reportes', staff, reportesRoutes);
+app.use('/api/panel', staff, panelRoutes);
 
 // ==============================
 // 404 Y MANEJO CENTRAL DE ERRORES
@@ -115,8 +121,12 @@ const iniciarServidor = async () => {
 
     console.log('Conexión con PostgreSQL establecida correctamente.');
 
-    app.listen(PORT, () => {
+    const httpServer = http.createServer(app);
+    iniciarSocket(httpServer);
+
+    httpServer.listen(PORT, () => {
       console.log(`Servidor ejecutándose en http://localhost:${PORT}`);
+      console.log('Panel en tiempo real disponible por Socket.IO.');
     });
   } catch (error) {
     console.error(
