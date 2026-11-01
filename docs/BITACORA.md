@@ -6,34 +6,37 @@
 
 ---
 
-## 2026-11-01 · Sesión 4 · Entorno local con Docker y preparación del despliegue
+## 2026-11-01 · Sesión 4 · Entorno local, despliegue en producción y v1.5.1
 
-- **Objetivo:** poder levantar el sistema completo en local y dejar listo el despliegue gratuito en Render + Vercel.
-- **Rama:** `feature/v1.5.1-despliegue`, creada desde `feature/v1.5.0-rabbitmq` (PR #10 abierto).
+- **Objetivo:** levantar el sistema completo en local y desplegarlo en producción con el plan gratuito de Render + Vercel.
+- **Rama:** `feature/v1.5.1-despliegue`, rebasada sobre `main` después de la fusión del PR #10. PR #11 abierto desde el fork `jjemd101191/Sistema-gestion-de-vuelos`.
 - **Hecho en esta sesión:**
-  - `docker-compose.yml` con PostgreSQL 16 + pgvector en el puerto **5433** (para no chocar con el PostgreSQL nativo del equipo) y RabbitMQ 3.13 con panel de administración en el 15672.
-  - `.env` local apuntando a los contenedores; la cadena de Neon quedó comentada como respaldo. El archivo no se versiona.
-  - Verificación local real: base inicializada, `/health` con base y mensajería en `ok`, y todas las suites ejecutadas (ver abajo).
+  - `docker-compose.yml` con PostgreSQL 16 + pgvector en el puerto **5433** (para no chocar con el PostgreSQL nativo) y RabbitMQ 3.13 con panel de administración en el 15672.
   - `scripts/iniciar-produccion.js`: supervisor que ejecuta API y worker en un solo servicio web, porque el plan gratuito de Render no incluye Background Workers. Reinicia el worker si se cae y detiene todo si la API termina.
-  - `render.yaml` con el blueprint del servicio (plan free, health check, variables y secretos), `frontend/vercel.json` y `docs/DESPLIEGUE.md` con el paso a paso.
-  - `scripts/cambiar-password.js` (`npm run db:password`) para reemplazar las contraseñas del seed antes de publicar.
-  - Las pruebas aceptan `ADMIN_USUARIO` y `ADMIN_PASSWORD` por entorno, de modo que siguen funcionando después del cambio de contraseña.
-  - `.env.example` documenta las variables de pruebas y de producción.
-- **Archivos tocados:** `docker-compose.yml`, `render.yaml`, `frontend/vercel.json`, `scripts/iniciar-produccion.js`, `scripts/cambiar-password.js`, `docs/DESPLIEGUE.md`, `docs/BITACORA.md`, `package.json`, `.env.example`, `tests/api.v1.1.0.js`, `tests/panel.v1.3.0.js`, `tests/rabbitmq.v1.5.0.js`.
+  - `render.yaml`, `frontend/vercel.json`, `docs/DESPLIEGUE.md` y `scripts/cambiar-password.js` (`npm run db:password`).
+  - Despliegue real: API + worker en Render, frontend en Vercel, Neon, CloudAMQP y Ethereal.
+  - Seed relativo: al ejecutar `db:init` las fechas se desplazan para que el “hoy” original (2 de octubre de 2026) sea la fecha real; hoy quedan 5 vuelos.
+  - Contraseñas de `admin` y `secretario` rotadas en producción (no se registran aquí).
+  - Pruebas con credenciales configurables por entorno (`ADMIN_*`, `SECRETARIO_*`, `PASAJERO_*`).
+  - README actualizado a v1.5.1 con las URLs públicas y la guía de despliegue.
+- **Archivos tocados:** `docker-compose.yml`, `render.yaml`, `frontend/vercel.json`, `scripts/iniciar-produccion.js`, `scripts/cambiar-password.js`, `docs/DESPLIEGUE.md`, `docs/BITACORA.md`, `README.md`, `package.json`, `package-lock.json`, `frontend/package.json`, `frontend/package-lock.json`, `.env.example`, `db/postgres/seed.sql`, `tests/api.v1.1.0.js`, `tests/panel.v1.3.0.js`, `tests/reportes.v1.2.0.js`, `tests/rabbitmq.v1.5.0.js`.
 - **Verificación:**
   - `docker compose up -d` → PostgreSQL y RabbitMQ en estado `healthy`.
-  - `npm run db:init` → 25 puertas, 12 vuelos, 6 pasajeros, 8 equipajes, 12 notificaciones.
-  - `npm run start:prod` → API y worker arrancan juntos; `/health` responde `base_datos: ok`.
-  - `npm test` → **65 PASS / 0 FAIL** (API), **29 PASS / 0 FAIL** (reportes), **14 PASS / 0 FAIL** (panel).
+  - `npm run db:init` → 25 puertas, 12 vuelos (5 de hoy), 6 pasajeros, 8 equipajes, 12 notificaciones.
+  - `npm test` → **66 PASS / 0 FAIL** (API), **29 PASS / 0 FAIL** (reportes), **14 PASS / 0 FAIL** (panel).
   - `npm run test:rabbitmq` → **10 PASS / 0 FAIL** con el worker del supervisor.
   - Prueba de caída: al matar la API, el supervisor termina con código 1, apaga el worker y no deja procesos colgados.
-  - `npm run db:password` → valida argumentos y usuario inexistente (no se cambió ninguna contraseña real).
-- **Versión:** sin cambio todavía. Se propone **PATCH 1.5.1** cuando el despliegue público esté verificado; aún no hay URL ni tag.
-- **Commits/PR:** `6d57588` (entorno Docker) y `6199dbc` (despliegue); esta entrada va en el commit siguiente. PR #11 abierto desde el fork; la rama se rebasó sobre `main` (que ya incluye la v1.5.0) para eliminar el conflicto.
-- **Pendiente / siguiente paso:** crear CloudAMQP y SMTP; aplicar el blueprint en Render; desplegar el frontend en Vercel; cargar el esquema en Neon; cambiar contraseñas; verificar las URLs públicas; recién entonces cerrar v1.5.1, actualizar README y tag.
+  - Producción: `/health` 200 con base y mensajería; panel **14/14**, reportes **29/29**, RabbitMQ **10/10**; login con la contraseña nueva 200 y con la anterior 401.
+  - Frontend: el bundle de Vercel contiene la URL de Render; login cruzado y `GET /api/panel` con el `Origin` de Vercel responden 200 (12 vuelos, 25 puertas, 10 bandas, 15 KPIs).
+  - Neon: 12 vuelos, 5 de hoy, rango del 31/10 al 05/11.
+- **Versión:** **PATCH** — `1.5.0` → `1.5.1`: despliegue, entorno local, seed relativo y pruebas; sin cambios de contrato.
+- **Commits/PR:** `6d57588` (entorno Docker), `6199dbc` (despliegue), `b0da993` (seed relativo y pruebas) y `ad4f467` (release v1.5.1); tag `v1.5.1`. PR #11 desde el fork.
+- **Pendiente / siguiente paso:** Demy debe aprobar y fusionar el PR #11; cambiar `CORS_ORIGIN` en Render al dominio de Vercel; iniciar la v1.6.0 (agente de IA + RAG).
 - **Decisiones o riesgos:**
-  - El plan gratuito de Render duerme el servicio tras ~15 minutos sin tráfico: el worker también se pausa y los mensajes esperan en CloudAMQP. Para la defensa conviene mantenerlo despierto.
-  - El plan gratuito no permite un worker separado; va supervisado dentro del mismo servicio. Es una concesión del plan, documentada.
+  - Render free duerme el servicio tras ~15 minutos sin tráfico: el worker también se pausa y los mensajes esperan en CloudAMQP. Para la defensa conviene despertarlo antes.
+  - El plan gratuito no permite un worker separado; va supervisado dentro del mismo servicio.
+  - Ethereal es una bandeja de pruebas; para correo real hay que configurar Gmail o Mailtrap.
+  - `CORREO_MODO` sigue en `simulado` en producción; las credenciales SMTP ya están cargadas y se puede cambiar a `smtp`.
   - `npm run test:api` no es idempotente y modifica datos: no debe ejecutarse contra producción.
 
 ---
