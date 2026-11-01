@@ -6,6 +6,38 @@
 
 ---
 
+## 2026-11-01 · Sesión 4 · Entorno local con Docker y preparación del despliegue
+
+- **Objetivo:** poder levantar el sistema completo en local y dejar listo el despliegue gratuito en Render + Vercel.
+- **Rama:** `feature/v1.5.1-despliegue`, creada desde `feature/v1.5.0-rabbitmq` (PR #10 abierto).
+- **Hecho en esta sesión:**
+  - `docker-compose.yml` con PostgreSQL 16 + pgvector en el puerto **5433** (para no chocar con el PostgreSQL nativo del equipo) y RabbitMQ 3.13 con panel de administración en el 15672.
+  - `.env` local apuntando a los contenedores; la cadena de Neon quedó comentada como respaldo. El archivo no se versiona.
+  - Verificación local real: base inicializada, `/health` con base y mensajería en `ok`, y todas las suites ejecutadas (ver abajo).
+  - `scripts/iniciar-produccion.js`: supervisor que ejecuta API y worker en un solo servicio web, porque el plan gratuito de Render no incluye Background Workers. Reinicia el worker si se cae y detiene todo si la API termina.
+  - `render.yaml` con el blueprint del servicio (plan free, health check, variables y secretos), `frontend/vercel.json` y `docs/DESPLIEGUE.md` con el paso a paso.
+  - `scripts/cambiar-password.js` (`npm run db:password`) para reemplazar las contraseñas del seed antes de publicar.
+  - Las pruebas aceptan `ADMIN_USUARIO` y `ADMIN_PASSWORD` por entorno, de modo que siguen funcionando después del cambio de contraseña.
+  - `.env.example` documenta las variables de pruebas y de producción.
+- **Archivos tocados:** `docker-compose.yml`, `render.yaml`, `frontend/vercel.json`, `scripts/iniciar-produccion.js`, `scripts/cambiar-password.js`, `docs/DESPLIEGUE.md`, `docs/BITACORA.md`, `package.json`, `.env.example`, `tests/api.v1.1.0.js`, `tests/panel.v1.3.0.js`, `tests/rabbitmq.v1.5.0.js`.
+- **Verificación:**
+  - `docker compose up -d` → PostgreSQL y RabbitMQ en estado `healthy`.
+  - `npm run db:init` → 25 puertas, 12 vuelos, 6 pasajeros, 8 equipajes, 12 notificaciones.
+  - `npm run start:prod` → API y worker arrancan juntos; `/health` responde `base_datos: ok`.
+  - `npm test` → **65 PASS / 0 FAIL** (API), **29 PASS / 0 FAIL** (reportes), **14 PASS / 0 FAIL** (panel).
+  - `npm run test:rabbitmq` → **10 PASS / 0 FAIL** con el worker del supervisor.
+  - Prueba de caída: al matar la API, el supervisor termina con código 1, apaga el worker y no deja procesos colgados.
+  - `npm run db:password` → valida argumentos y usuario inexistente (no se cambió ninguna contraseña real).
+- **Versión:** sin cambio todavía. Se propone **PATCH 1.5.1** cuando el despliegue público esté verificado; aún no hay URL ni tag.
+- **Commits/PR:** `6d57588` (entorno Docker) y `6199dbc` (despliegue); esta entrada va en el commit siguiente. PR #11 abierto desde el fork; la rama se rebasó sobre `main` (que ya incluye la v1.5.0) para eliminar el conflicto.
+- **Pendiente / siguiente paso:** crear CloudAMQP y SMTP; aplicar el blueprint en Render; desplegar el frontend en Vercel; cargar el esquema en Neon; cambiar contraseñas; verificar las URLs públicas; recién entonces cerrar v1.5.1, actualizar README y tag.
+- **Decisiones o riesgos:**
+  - El plan gratuito de Render duerme el servicio tras ~15 minutos sin tráfico: el worker también se pausa y los mensajes esperan en CloudAMQP. Para la defensa conviene mantenerlo despierto.
+  - El plan gratuito no permite un worker separado; va supervisado dentro del mismo servicio. Es una concesión del plan, documentada.
+  - `npm run test:api` no es idempotente y modifica datos: no debe ejecutarse contra producción.
+
+---
+
 ## 2026-10-31 · Sesión 3 · Cierre de v1.5.0 (RabbitMQ)
 
 - **Objetivo:** revisar, verificar y cerrar la release v1.5.0 de mensajería asíncrona.
