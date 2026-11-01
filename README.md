@@ -901,7 +901,18 @@ chore: tareas de mantenimiento
 | **v1.5.0** | Mensajería asíncrona con RabbitMQ, worker de entrega y traza de entregas. |
 | **v1.5.1** | Despliegue en producción, entorno Docker, supervisor API+worker y seed relativo. |
 | **v1.6.0** | Agente de IA + RAG con pgvector, citas de fuentes, herramientas por rol, logs y chat en el frontend. |
-| v1.7.0 | Tablero `.pbix` de Power BI, manual técnico y cierre del proyecto. |
+| v1.7.0 | Tablero `.pbix` de Power BI y cierre del proyecto. |
+
+---
+
+## Documentación
+
+- [Manual técnico](docs/MANUAL_TECNICO.md): arquitectura, modelo, reglas, API, seguridad, mensajería, agente, despliegue y operación.
+- [Guía de despliegue](docs/DESPLIEGUE.md): Render + Vercel + Neon + CloudAMQP + Ethereal.
+- [Guía del agente IA](docs/AGENTE_IA.md): RAG, herramientas, proveedores, logs y pruebas.
+- [Guía de RabbitMQ](docs/RABBITMQ.md) y [guía de Power BI](docs/POWER_BI.md).
+- [Bitácora](docs/BITACORA.md): registro de sesiones, decisiones y verificación.
+- [CLAUDE.md](CLAUDE.md) y [AGENTS.md](AGENTS.md): desarrollo guiado por especificaciones.
 
 ---
 
