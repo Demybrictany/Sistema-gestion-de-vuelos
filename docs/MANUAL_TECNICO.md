@@ -1,6 +1,6 @@
 # Manual técnico — Sistema de Gestión de Vuelos AICM
 
-**Versión:** 1.6.0
+**Versión:** 1.6.1
 **Repositorio:** https://github.com/Demybrictany/Sistema-gestion-de-vuelos
 **Producción:** [frontend](https://sistema-gestion-de-vuelos.vercel.app) · [API](https://sistema-vuelos-api.onrender.com/health)
 **Equipo:** Juanjo, Demy · Universidad Mesoamericana Quetzaltenango
@@ -167,6 +167,10 @@ usuarios ─▶ auditoria / interacciones_agente
 
 - Se generan por puerta, cambio de puerta, banda, cambio de horario, retraso,
   cancelación, escala e información general.
+- Al asignar un pasajero a un vuelo se envía un aviso inicial con código, fecha,
+  hora y puerta (si existe).
+- Al crear o cambiar la puerta de salida de una escala se notifica al pasajero
+  del itinerario con la nueva puerta y la hora de la conexión.
 - Se publican en RabbitMQ después del commit de la transacción.
 - El worker envía por SMTP o simula, y registra la entrega.
 
@@ -365,6 +369,7 @@ Resultados de referencia: **66 + 29 + 14 + 12 PASS** y **10 PASS** en RabbitMQ.
 | v1.5.0 | RabbitMQ, worker y entregas. |
 | v1.5.1 | Despliegue, Docker y seed relativo. |
 | v1.6.0 | Agente de IA + RAG, logs y chat. |
+| v1.6.1 | Avisos de reserva y de puerta de escala; servicio de escalas y corrección del RAG. |
 
 ---
 
@@ -374,6 +379,7 @@ Resultados de referencia: **66 + 29 + 14 + 12 PASS** y **10 PASS** en RabbitMQ.
 - Sin `VOYAGE_API_KEY` el RAG usa texto completo, no vectores.
 - El plan gratuito de Render duerme el servicio; usar un monitor para la defensa.
 - El rate limit del agente es en memoria (una sola instancia).
+- Las escalas validan que la puerta exista y esté operativa, pero no participan en la restricción de exclusión temporal de los vuelos.
 - Pendientes: tablero `.pbix` de Power BI y ampliación de pruebas unitarias.
 - El frontend es operativo para consulta; las altas y ediciones siguen por la API.
 

@@ -10,7 +10,7 @@ la Ciudad de México. Backend Node.js/Express 5 con PostgreSQL, frontend React/V
 RabbitMQ, reportería con Excel/PDF, vistas para Power BI, panel en tiempo real y
 agente de IA con RAG.
 
-- **Versión:** 1.6.0
+- **Versión:** 1.6.1
 - **Repositorio:** https://github.com/Demybrictany/Sistema-gestion-de-vuelos
 - **Producción:** https://sistema-gestion-de-vuelos.vercel.app
 - **API:** https://sistema-vuelos-api.onrender.com

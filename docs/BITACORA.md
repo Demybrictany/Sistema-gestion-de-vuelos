@@ -6,6 +6,33 @@
 
 ---
 
+## 2026-11-01 · Sesión 6 · Avisos de dominio y corrección del RAG (v1.6.1)
+
+- **Objetivo:** cumplir los dos avisos de dominio que faltaban (hora de salida inicial y puerta de escala) y corregir el troceado del corpus RAG.
+- **Rama:** `feature/v1.6.1-dominio`, creada desde `feature/v1.6.0-agente-ia`.
+- **Hecho en esta sesión:**
+  - Al asignar un pasajero a un vuelo se crea un aviso con código, fecha, hora y puerta (si ya existe); también al reactivar una reserva cancelada.
+  - Nuevo `services/escala.service.js`: valida itinerario, vuelo, aeropuertos, horarios y puertas operativas en una transacción; el controlador quedó delgado.
+  - Al crear o cambiar la puerta de salida de una escala se notifica al pasajero del itinerario con `PUERTA_ASIGNADA` o `CAMBIO_PUERTA`, hora y número de puerta.
+  - `test:escalas`: 11 verificaciones de ambos avisos, rechazo de puerta en mantenimiento y limpieza de los datos creados.
+  - Corrección del troceado RAG: reconocía solo `\n\n` y con CRLF dejaba cada documento en un solo fragmento; ahora acepta `\r?\n\s*\r?\n`, parte bloques largos y reindexa si cambió el número de fragmentos.
+  - Ingesta local y de Neon rehecha: 4 documentos y 13 fragmentos.
+- **Archivos tocados:** `services/pasajero_vuelo.service.js`, `services/escala.service.js`, `controllers/escala.controller.js`, `services/rag.service.js`, `tests/escalas.v1.6.1.js`, `package.json`, `package-lock.json`, `frontend/package.json`, `frontend/package-lock.json`, `frontend/README.md`, `README.md`, `docs/MANUAL_TECNICO.md`, `CLAUDE.md`, `docs/BITACORA.md`.
+- **Verificación:**
+  - `npm run test:escalas` → **11 PASS / 0 FAIL**.
+  - `npm test` → **66 + 29 + 14 + 12 + 11 PASS**, 0 FAIL; `npm run test:rabbitmq` → **10 PASS / 0 FAIL**.
+  - `npm run rag:ingestar` → 2 + 3 + 5 + 3 = **13 fragmentos**; la misma ingesta se aplicó a Neon.
+  - Prueba manual: el aviso de reserva incluye código, fecha, hora y puerta; el de escala cambia de A02 a A03 y genera `CAMBIO_PUERTA`.
+- **Versión:** **PATCH** — `1.6.0` → `1.6.1`: avisos de dominio, servicio de escalas y corrección del RAG; compatible con la API existente.
+- **Commits/PR:** pendientes al cierre de esta entrada; PR #13 apilado sobre el #12.
+- **Pendiente / siguiente paso:** redesplegar Render con la rama de la release; aprobar y fusionar los PR; tablero `.pbix` de Power BI.
+- **Decisiones o riesgos:**
+  - Las escalas validan que la puerta exista y esté operativa, pero no participan en la restricción `EXCLUDE` temporal de los vuelos.
+  - Si se quita la puerta de salida de una escala no se envía aviso, porque no hay una puerta nueva que comunicar.
+  - La reindexación depende de que cambie el número de fragmentos o el contenido; si se cambia solo el criterio sin alterar el conteo, hay que borrar los documentos o cambiar el hash.
+
+---
+
 ## 2026-11-01 · Sesión 5 · Agente de IA + RAG (v1.6.0)
 
 - **Objetivo:** implementar el agente de IA con RAG, herramientas sobre datos reales, citas de fuentes y logs, sin depender de una API key para la demo.

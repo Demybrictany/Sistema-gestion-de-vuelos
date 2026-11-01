@@ -2,7 +2,7 @@
 
 Sistema para la gestión de **vuelos, pasajeros y equipaje** del Aeropuerto Internacional de la Ciudad de México (AICM). Administra puertas de embarque, bandas de equipaje, itinerarios, escalas, notificaciones, historial y auditoría.
 
-**Versión:** `v1.6.0`
+**Versión:** `v1.6.1`
 **Repositorio:** https://github.com/Demybrictany/Sistema-gestion-de-vuelos
 **Producción:** [frontend](https://sistema-gestion-de-vuelos.vercel.app) · [API](https://sistema-vuelos-api.onrender.com/health)
 **Equipo:** Juanjo, Demy
@@ -21,6 +21,16 @@ El sistema modela la operación del aeropuerto:
 - El catálogo incluye **25 puertas de embarque**, 10 bandas, 6 aeropuertos y datos de ejemplo.
 
 Incluye **16 reportes de negocio** con filtros y agregaciones, exportables a Excel y PDF, **vistas de solo lectura para Power BI**, un **panel operativo en tiempo real** expuesto por API REST y Socket.IO, un **frontend web** con inicio de sesión, mapa de puertas, vuelos y reportería, y **mensajería asíncrona con RabbitMQ** para entregar las notificaciones por correo mediante un worker. Incluye un **agente de IA con RAG** que consulta datos operativos y la documentación del negocio, responde con **citas de fuentes** y registra cada interacción para auditoría (ver [`docs/AGENTE_IA.md`](docs/AGENTE_IA.md)).
+
+---
+
+## Novedades de la v1.6.1
+
+- **Aviso inicial de reserva:** al asignar un pasajero a un vuelo se envía una notificación con código, fecha, hora y puerta (si ya existe).
+- **Aviso de puerta de escala:** al crear o cambiar la puerta de salida de una escala se notifica al pasajero del itinerario con la nueva puerta y la hora de la conexión.
+- **Servicio de escalas:** la lógica sale del controlador; valida itinerario, vuelo, aeropuertos, horarios y puertas operativas dentro de una transacción.
+- **Corrección del RAG:** el troceado ahora reconoce finales de línea CRLF y vuelve a generar 13 fragmentos; la ingesta reindexa si cambia el número de fragmentos.
+- **Pruebas:** `npm run test:escalas` verifica ambos avisos y la validación de puertas.
 
 ---
 
@@ -830,12 +840,13 @@ Datos sembrados **solo para desarrollo**. En producción las contraseñas de `ad
 | `npm run db:migrate:agente` | Aplica la migración de v1.6.0 (RAG y agente). |
 | `npm run rag:ingestar` | Indexa la documentación de `docs/rag/`. |
 | `npm run db:password -- <usuario> <clave>` | Cambia la contraseña de un usuario en la base configurada. |
-| `npm test` | Ejecuta las pruebas de API, reportería, panel y agente. |
+| `npm test` | Ejecuta las pruebas de API, reportería, panel, agente y escalas. |
 | `npm run test:api` | Pruebas de integración de la API. |
 | `npm run test:reportes` | Pruebas del catálogo, filtros y exportaciones. |
 | `npm run test:panel` | Pruebas del panel operativo y del handshake de Socket.IO. |
 | `npm run test:rabbitmq` | Pruebas del flujo API → cola → worker → entrega (requiere broker). |
 | `npm run test:agente` | Pruebas del agente, RAG, citas, permisos y logs. |
+| `npm run test:escalas` | Pruebas de avisos de reserva y de puerta de escala. |
 
 ---
 
@@ -858,6 +869,7 @@ Datos sembrados **solo para desarrollo**. En producción las contraseñas de `ad
 | `v1.5.0` | Mensajería asíncrona con RabbitMQ, worker de entrega, traza de entregas y vista BI. |
 | `v1.5.1` | Despliegue en producción, entorno Docker, supervisor API+worker, seed relativo y cambio de contraseñas. |
 | `v1.6.0` | Agente de IA + RAG con citas, herramientas por rol, logs del agente, pgvector opcional y chat en el frontend. |
+| `v1.6.1` | Aviso inicial de reserva, aviso de puerta de escala, servicio de escalas y corrección del troceado RAG. |
 
 ### Convención de commits
 
@@ -872,7 +884,7 @@ chore: tareas de mantenimiento
 
 ---
 
-## Limitaciones conocidas de v1.6.0
+## Limitaciones conocidas de v1.6.1
 
 - El frontend es de consulta y reportería: el alta y edición de vuelos, pasajeros y equipajes se hacen por la API.
 - La entrega de correo es simulada por defecto (`CORREO_MODO=simulado`); para enviar correo real hay que configurar SMTP.
@@ -901,6 +913,7 @@ chore: tareas de mantenimiento
 | **v1.5.0** | Mensajería asíncrona con RabbitMQ, worker de entrega y traza de entregas. |
 | **v1.5.1** | Despliegue en producción, entorno Docker, supervisor API+worker y seed relativo. |
 | **v1.6.0** | Agente de IA + RAG con pgvector, citas de fuentes, herramientas por rol, logs y chat en el frontend. |
+| **v1.6.1** | Avisos de reserva y de puerta de escala, servicio de escalas y corrección del RAG. |
 | v1.7.0 | Tablero `.pbix` de Power BI y cierre del proyecto. |
 
 ---
