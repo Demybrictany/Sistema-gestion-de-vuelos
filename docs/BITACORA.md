@@ -6,6 +6,29 @@
 
 ---
 
+## 2026-10-31 · Sesión 3 · Cierre de v1.5.0 (RabbitMQ)
+
+- **Objetivo:** revisar, verificar y cerrar la release v1.5.0 de mensajería asíncrona.
+- **Rama:** `feature/v1.5.0-rabbitmq`, creada a partir de `main` (v1.4.0).
+- **Hecho en esta sesión:**
+  - Revisión completa del trabajo pendiente de v1.5.0: cola, worker, entregas, migración, pruebas y documentación.
+  - Versión `1.4.0` → `1.5.0` en backend y frontend (`package.json` y lockfiles).
+  - Documentación de todas las variables de RabbitMQ (`RABBITMQ_EXCHANGE_FALLIDAS`, colas de fallidos/reintentos, TTL y prefetch).
+  - Endurecimiento del worker: si la conexión o el canal se cierran, termina con código 1 para que el supervisor lo reinicie.
+- **Archivos tocados:** `package.json`, `package-lock.json`, `frontend/package.json`, `frontend/package-lock.json`, `.env.example`, `README.md`, `docs/RABBITMQ.md`, `docs/BITACORA.md`, `workers/notificaciones.worker.js`; más los archivos de v1.5.0 que estaban sin commitear.
+- **Verificación:**
+  - `node --check` sobre todos los archivos JS del backend → OK.
+  - `npm run build` en `frontend/` → 73 módulos; `index.js` 214.59 kB (67.62 kB gzip) y `index.css` 19.67 kB (4.64 kB gzip).
+  - No se ejecutaron `test:api`, `test:reportes`, `test:panel` ni `test:rabbitmq` en esta sesión: requieren API, base y broker/worker levantados.
+- **Versión:** MINOR — `1.4.0` → `1.5.0`: mensajería asíncrona, worker, traza de entregas y vista BI; compatible con la API existente.
+- **Commits/PR:** se registran al ejecutar el push y abrir el PR de la rama.
+- **Pendiente / siguiente paso:** aprobar y fusionar el PR; agente de IA + RAG; `.pbix` de Power BI; despliegue y manual técnico.
+- **Decisiones o riesgos:**
+  - El worker ahora depende de que el supervisor lo reinicie si el broker cae; en Render/Railway hay que configurarlo como worker con reinicio automático.
+  - Sin `RABBITMQ_URL` la mensajería queda desactivada; la API sigue funcionando.
+
+---
+
 ## 2026-10-29 · Sesión 2 · Frontend del panel (v1.4.0)
 
 - **Objetivo:** construir la interfaz web del panel operativo y cerrar la release v1.4.0.

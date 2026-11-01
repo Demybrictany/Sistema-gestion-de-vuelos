@@ -10,6 +10,7 @@
 BEGIN;
 
 DROP VIEW IF EXISTS bi_kpis_diarios CASCADE;
+DROP VIEW IF EXISTS bi_entregas_notificacion CASCADE;
 DROP VIEW IF EXISTS bi_auditoria CASCADE;
 DROP VIEW IF EXISTS bi_historial_equipaje CASCADE;
 DROP VIEW IF EXISTS bi_historial_vuelo CASCADE;
@@ -18,6 +19,26 @@ DROP VIEW IF EXISTS bi_equipaje_tramos CASCADE;
 DROP VIEW IF EXISTS bi_equipajes CASCADE;
 DROP VIEW IF EXISTS bi_pasajeros_vuelo CASCADE;
 DROP VIEW IF EXISTS bi_vuelos CASCADE;
+
+-- ------------------------------------------------------------
+-- Entregas de notificaciones (correo/push/SMS)
+-- ------------------------------------------------------------
+CREATE VIEW bi_entregas_notificacion AS
+SELECT
+  e.id_entrega,
+  e.id_notificacion,
+  n.id_pasajero,
+  n.id_vuelo,
+  n.tipo::text AS tipo_notificacion,
+  e.canal::text AS canal,
+  e.destinatario,
+  e.estado::text AS estado,
+  e.intento,
+  e.detalle,
+  e.fecha_entrega,
+  e.created_at
+FROM entregas_notificacion e
+JOIN notificaciones n ON n.id_notificacion = e.id_notificacion;
 
 -- ------------------------------------------------------------
 -- Vuelos con aeropuertos, puerta y ocupación

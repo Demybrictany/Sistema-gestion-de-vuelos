@@ -73,6 +73,7 @@ Con un servidor PostgreSQL local:
 | `bi_equipajes` | Equipajes con pasajero, ruta, banda y estado. | Inventario de equipaje, bandas. |
 | `bi_equipaje_tramos` | Tramos de equipaje y conexiones. | Seguimiento de equipaje en conexión. |
 | `bi_notificaciones` | Notificaciones con pasajero, vuelo, equipaje y lectura. | Tasa de lectura, comunicación. |
+| `bi_entregas_notificacion` | Entregas por correo/push/SMS con estado, intento, destinatario y fecha. | Efectividad de la mensajería y fallos de entrega. |
 | `bi_historial_vuelo` | Cambios de vuelos con valores anterior/nuevo y usuario. | Auditoría operativa. |
 | `bi_historial_equipaje` | Movimientos de equipaje y bandas. | Trazabilidad de equipaje. |
 | `bi_auditoria` | Operaciones auditadas con usuario y tabla afectada. | Seguridad y actividad de usuarios. |
@@ -86,6 +87,7 @@ Con un servidor PostgreSQL local:
 |---|---|---|
 | `bi_vuelos[id_vuelo]` | `bi_pasajeros_vuelo[id_vuelo]` | 1 → * |
 | `bi_vuelos[id_vuelo]` | `bi_notificaciones[id_vuelo]` | 1 → * |
+| `bi_notificaciones[id_notificacion]` | `bi_entregas_notificacion[id_notificacion]` | 1 → * |
 | `bi_vuelos[id_vuelo]` | `bi_equipaje_tramos[id_vuelo]` | 1 → * |
 | `bi_equipajes[id_equipaje]` | `bi_equipaje_tramos[id_equipaje]` | 1 → * |
 | `bi_equipajes[id_equipaje]` | `bi_notificaciones[id_equipaje]` | 1 → * |

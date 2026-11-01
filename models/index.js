@@ -12,6 +12,7 @@ const modelos = {
   Equipaje: require('./equipaje.model'),
   EquipajeVuelo: require('./equipaje_vuelo.model'),
   Notificacion: require('./notificacion.model'),
+  EntregaNotificacion: require('./entrega_notificacion.model'),
   HistorialVuelo: require('./historial_vuelo.model'),
   HistorialEquipaje: require('./historial_equipaje.model'),
   Auditoria: require('./auditoria.model'),
@@ -19,8 +20,10 @@ const modelos = {
 
 const { activarAuditoria } = require('./auditoria.hooks');
 const { activarEventosPanel } = require('./panel.hooks');
+const { activarEventosNotificacion } = require('./notificacion.hooks');
 
 activarAuditoria(modelos);
 activarEventosPanel(modelos);
+activarEventosNotificacion(modelos);
 
 module.exports = modelos;

@@ -2,7 +2,7 @@
 
 Sistema para la gestión de **vuelos, pasajeros y equipaje** del Aeropuerto Internacional de la Ciudad de México (AICM). Administra puertas de embarque, bandas de equipaje, itinerarios, escalas, notificaciones, historial y auditoría.
 
-**Versión:** `v1.4.0`
+**Versión:** `v1.5.0`
 **Repositorio:** https://github.com/Demybrictany/Sistema-gestion-de-vuelos
 **Equipo:** Juanjo, Demy
 
@@ -19,7 +19,20 @@ El sistema modela la operación del aeropuerto:
 - Cada operación relevante queda registrada en el historial y en la auditoría.
 - El catálogo incluye **25 puertas de embarque**, 10 bandas, 6 aeropuertos y datos de ejemplo.
 
-Incluye **16 reportes de negocio** con filtros y agregaciones, exportables a Excel y PDF, **vistas de solo lectura para Power BI**, un **panel operativo en tiempo real** expuesto por API REST y Socket.IO, y un **frontend web** con inicio de sesión, mapa de puertas, vuelos y reportería. La mensajería asíncrona y el agente de IA se desarrollarán en las siguientes versiones (ver [Hoja de ruta](#hoja-de-ruta)).
+Incluye **16 reportes de negocio** con filtros y agregaciones, exportables a Excel y PDF, **vistas de solo lectura para Power BI**, un **panel operativo en tiempo real** expuesto por API REST y Socket.IO, un **frontend web** con inicio de sesión, mapa de puertas, vuelos y reportería, y **mensajería asíncrona con RabbitMQ** para entregar las notificaciones por correo mediante un worker. El agente de IA + RAG se desarrollará en la v1.6.0 (ver [Hoja de ruta](#hoja-de-ruta)).
+
+---
+
+## Novedades de la v1.5.0
+
+- **Mensajería asíncrona con RabbitMQ:** cada notificación creada se publica en el exchange `sistema.vuelos` después del commit de la transacción.
+- **Worker independiente:** `npm run worker` consume la cola `notificaciones.pasajeros`, envía el correo (SMTP) o lo simula, y registra la entrega.
+- **Traza de entregas:** nueva tabla `entregas_notificacion` con estados `PENDIENTE`, `ENVIADA`, `SIMULADA` y `FALLIDA`, más índices y vista `bi_entregas_notificacion` para Power BI.
+- **Reintentos y cola de fallidos:** los errores temporales se reintentan con TTL; después de 3 intentos, el mensaje pasa a `notificaciones.fallidas`.
+- **Consulta de entregas:** `GET /api/notificaciones/entregas`, `GET /api/notificaciones/entregas/resumen` y `GET /api/notificaciones/:id/entregas`.
+- **Degradación limpia:** sin `RABBITMQ_URL`, la API sigue funcionando y el worker no arranca; `/health` informa el estado de la mensajería.
+- **Guía completa:** [`docs/RABBITMQ.md`](docs/RABBITMQ.md) con topología, configuración de CloudAMQP, variables, operación y solución de problemas.
+- **Pruebas:** `npm run test:rabbitmq` verifica el flujo completo API → cola → worker → entrega.
 
 ---
 
@@ -101,6 +114,8 @@ Incluye **16 reportes de negocio** con filtros y agregaciones, exportables a Exc
 | Reportería | ExcelJS (Excel) + PDFKit (PDF) |
 | Business Intelligence | PostgreSQL views + Power BI |
 | Tiempo real | Socket.IO 4 (panel operativo) |
+| Mensajería asíncrona | RabbitMQ + `amqplib` + worker |
+| Correo | Nodemailer (SMTP) o modo simulado |
 
 ---
 
@@ -124,19 +139,22 @@ Incluye **16 reportes de negocio** con filtros y agregaciones, exportables a Exc
 ├── db/
 │   ├── database.js             # Conexión Sequelize (PostgreSQL)
 │   ├── postgres/
-│   │   ├── schema.sql          # Esquema PostgreSQL (16 tablas)
+│   │   ├── schema.sql          # Esquema PostgreSQL (17 tablas)
 │   │   ├── seed.sql            # Datos iniciales
 │   │   └── views_bi.sql        # Vistas de solo lectura para Power BI
 │   └── legacy/
 │       └── scrip-sistema-vuelos.sql  # Dump MySQL original
 ├── docs/
-│   └── POWER_BI.md             # Conexión y modelo para Power BI
+│   ├── POWER_BI.md             # Conexión y modelo para Power BI
+│   └── RABBITMQ.md             # Mensajería asíncrona y operación del worker
 ├── lib/
 │   ├── async-handler.js        # Envoltura para errores async
 │   ├── contexto.js             # AsyncLocalStorage (usuario/IP por request)
+│   ├── correo.js               # Envío SMTP o simulado
 │   ├── cors.js                 # Orígenes permitidos para el frontend/panel
 │   ├── errores.js              # ErrorConEstado
 │   ├── eventos-panel.js        # Bus de cambios con debounce para el panel
+│   ├── rabbitmq.js             # Conexión, topología y publicación de eventos
 │   ├── socket.js               # Socket.IO: autenticación y emisión en vivo
 │   └── exportar/
 │       ├── excel.js            # Exportación XLSX
@@ -148,17 +166,23 @@ Incluye **16 reportes de negocio** con filtros y agregaciones, exportables a Exc
 │   └── validar.middleware.js   # Validación con Zod
 ├── models/                     # Modelos y asociaciones
 │   ├── auditoria.hooks.js      # Auditoría automática
+│   ├── entrega_notificacion.model.js  # Traza de entregas
 │   ├── index.js                # Carga de modelos y hooks
+│   ├── notificacion.hooks.js   # Publicación de notificaciones en la cola
 │   └── panel.hooks.js          # Eventos de tiempo real del panel
 ├── routes/                     # Endpoints REST
 ├── services/                   # Lógica de negocio, transacciones y reportes
 ├── scripts/
 │   ├── init-db.js              # Esquema + seed + vistas
-│   └── init-views.js           # Solo vistas de BI
+│   ├── init-views.js           # Solo vistas de BI
+│   └── migrate-v1.5.0.js       # Migración incremental de entregas
 ├── tests/
 │   ├── api.v1.1.0.js           # Pruebas de integración
 │   ├── panel.v1.3.0.js         # Pruebas del panel operativo
+│   ├── rabbitmq.v1.5.0.js      # Pruebas de mensajería asíncrona
 │   └── reportes.v1.2.0.js      # Pruebas de reportería
+├── workers/
+│   └── notificaciones.worker.js # Consumidor de la cola de notificaciones
 ├── validators/
 │   └── schemas.js              # Esquemas Zod
 ├── .env.example
@@ -241,6 +265,13 @@ Puertas: 25 | Vuelos: 12 | Pasajeros: 6 | Equipajes: 8 | Notificaciones: 12
 ```
 
 > El script es **idempotente**: elimina y vuelve a crear las tablas en cada ejecución.
+>
+> Si la base ya existe y no quieres perder los datos, aplica solo la migración de v1.5.0:
+>
+> ```bash
+> npm run db:migrate
+> npm run db:views
+> ```
 
 ### 4. Ejecutar el servidor
 
@@ -251,7 +282,18 @@ npm start       # producción
 
 La API queda en `http://localhost:3000`.
 
-### 5. Ejecutar el frontend
+### 5. Ejecutar el worker de notificaciones
+
+En otra terminal, con `RABBITMQ_URL` configurada:
+
+```bash
+npm run worker       # producción
+npm run dev:worker   # con nodemon
+```
+
+El worker consume la cola `notificaciones.pasajeros` y registra cada entrega. La guía completa está en [`docs/RABBITMQ.md`](docs/RABBITMQ.md). Si no configuras RabbitMQ, puedes omitir este paso: la API sigue funcionando y la mensajería queda desactivada.
+
+### 6. Ejecutar el frontend
 
 En otra terminal, con el backend levantado:
 
@@ -263,7 +305,7 @@ npm run dev
 
 Abre `http://localhost:5173` e inicia sesión con `admin` / `Admin123!`. Vite hace proxy de `/api` y `/socket.io` hacia `http://localhost:3000`. La guía del frontend está en [`frontend/README.md`](frontend/README.md).
 
-### 6. Ejecutar las pruebas de integración
+### 7. Ejecutar las pruebas de integración
 
 Con el servidor levantado y una base recién inicializada:
 
@@ -290,6 +332,18 @@ El script crea y modifica datos; usa una base de pruebas o vuelve a ejecutar `np
 | `JWT_EXPIRES_IN` | No | Duración del token (por defecto `8h`). |
 | `PORT` | No | Puerto del servidor (por defecto `3000`). |
 | `CORS_ORIGIN` | No | Orígenes permitidos para el frontend/panel, separados por comas. `*` en desarrollo. |
+| `RABBITMQ_URL` | No | URL AMQP del broker. Sin ella, la mensajería asíncrona queda desactivada. |
+| `RABBITMQ_EXCHANGE` | No | Exchange principal (por defecto `sistema.vuelos`). |
+| `RABBITMQ_EXCHANGE_FALLIDAS` | No | Exchange de mensajes fallidos (por defecto `sistema.vuelos.fallidas`). |
+| `RABBITMQ_QUEUE` | No | Cola de notificaciones (por defecto `notificaciones.pasajeros`). |
+| `RABBITMQ_QUEUE_FALLIDAS` | No | Cola de fallidos (por defecto `notificaciones.fallidas`). |
+| `RABBITMQ_QUEUE_REINTENTOS` | No | Cola temporal de reintentos (por defecto `notificaciones.reintentos`). |
+| `RABBITMQ_MAX_REINTENTOS` | No | Reintentos antes de enviar a fallidos (por defecto `3`). |
+| `RABBITMQ_TTL_REINTENTO_MS` | No | Espera entre reintentos en ms (por defecto `5000`). |
+| `RABBITMQ_PREFETCH` | No | Mensajes en vuelo por worker (por defecto `10`). |
+| `CORREO_MODO` | No | `simulado` (por defecto) o `smtp`. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE` | No | Servidor SMTP para `CORREO_MODO=smtp`. |
+| `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | No | Credenciales y remitente del correo. |
 
 Genera un secreto seguro:
 
@@ -504,6 +558,9 @@ Cada recurso expone `GET /`, `GET /:id`, `POST /`, `PUT /:id` y, cuando aplica, 
 | `GET` | `/api/notificaciones/mias` | PASAJERO | Notificaciones propias. |
 | `PATCH` | `/api/notificaciones/mias/leer-todas` | PASAJERO | Marca todas como leídas. |
 | `PATCH` | `/api/notificaciones/:id/leer` | Todos | Marca una notificación como leída (el pasajero solo las suyas). |
+| `GET` | `/api/notificaciones/entregas` | ADMIN, SECRETARIO | Últimas entregas de la mensajería. Filtros: `estado`, `canal`, `id_notificacion`. |
+| `GET` | `/api/notificaciones/entregas/resumen` | ADMIN, SECRETARIO | Totales de entregas por estado. |
+| `GET` | `/api/notificaciones/:id/entregas` | ADMIN, SECRETARIO | Entregas de una notificación. |
 | `GET` | `/api/auditoria/usuario/:idUsuario` | ADMIN | Auditoría de un usuario. |
 | `GET` | `/api/historial-vuelo/vuelo/:idVuelo` | ADMIN, SECRETARIO | Historial de un vuelo. |
 | `GET` | `/api/historial-equipaje/equipaje/:idEquipaje` | ADMIN, SECRETARIO | Historial de un equipaje. |
@@ -572,6 +629,34 @@ curl -X POST http://localhost:3000/api/equipajes/2/tramos \
 
 ---
 
+## Mensajería asíncrona (RabbitMQ)
+
+Las notificaciones no se envían desde el request HTTP: se **encolan** y un worker las entrega.
+
+```text
+Notificacion.create() ──afterCommit──▶ exchange sistema.vuelos
+                                            │
+                                            ▼
+                              cola notificaciones.pasajeros
+                                            │
+                                            ▼
+                              worker → correo (SMTP/simulado)
+                                            │
+                                            ▼
+                              entregas_notificacion + auditoria
+```
+
+- **Publicación:** el hook `afterCreate`/`afterBulkCreate` de `Notificacion` publica `notificacion.creada` solo cuando la transacción hizo commit.
+- **Worker:** `npm run worker` consume la cola, consulta la notificación y el pasajero, envía el correo y registra la entrega.
+- **Reintentos:** los fallos temporales se reintentan con TTL; tras 3 intentos el mensaje va a `notificaciones.fallidas`.
+- **Idempotencia:** una notificación ya `ENVIADA` o `SIMULADA` no se vuelve a enviar.
+- **Modo simulado:** con `CORREO_MODO=simulado` (por defecto) no se envía correo real, pero la entrega queda registrada como `SIMULADA`.
+- **Degradación:** sin `RABBITMQ_URL`, la API y el resto del sistema funcionan igual; `/health` reporta `mensajeria: "no configurada"`.
+
+La topología, la configuración de CloudAMQP, las variables, los endpoints y la solución de problemas están en [`docs/RABBITMQ.md`](docs/RABBITMQ.md).
+
+---
+
 ## Reportería y Power BI
 
 ### Endpoints
@@ -625,7 +710,7 @@ curl -o ocupacion.pdf \
 
 ### Power BI
 
-La base incluye 9 vistas de solo lectura (`bi_vuelos`, `bi_pasajeros_vuelo`, `bi_equipajes`, `bi_equipaje_tramos`, `bi_notificaciones`, `bi_historial_vuelo`, `bi_historial_equipaje`, `bi_auditoria` y `bi_kpis_diarios`). Se recrean con:
+La base incluye 10 vistas de solo lectura (`bi_vuelos`, `bi_pasajeros_vuelo`, `bi_equipajes`, `bi_equipaje_tramos`, `bi_notificaciones`, `bi_entregas_notificacion`, `bi_historial_vuelo`, `bi_historial_equipaje`, `bi_auditoria` y `bi_kpis_diarios`). Se recrean con:
 
 ```bash
 npm run db:views
@@ -656,12 +741,16 @@ Datos sembrados **solo para desarrollo**. Cámbialos antes de desplegar.
 |---|---|
 | `npm start` | Inicia el servidor. |
 | `npm run dev` | Inicia con recarga automática (nodemon). |
+| `npm run worker` | Inicia el worker de notificaciones (requiere `RABBITMQ_URL`). |
+| `npm run dev:worker` | Inicia el worker con recarga automática. |
 | `npm run db:init` | Crea el esquema, carga los datos iniciales y crea las vistas de BI. |
 | `npm run db:views` | Recrea solo las vistas de Power BI (no borra datos). |
+| `npm run db:migrate` | Aplica la migración incremental de v1.5.0 (tabla de entregas). |
 | `npm test` | Ejecuta las pruebas de API, reportería y panel. |
 | `npm run test:api` | Pruebas de integración de la API. |
 | `npm run test:reportes` | Pruebas del catálogo, filtros y exportaciones. |
 | `npm run test:panel` | Pruebas del panel operativo y del handshake de Socket.IO. |
+| `npm run test:rabbitmq` | Pruebas del flujo API → cola → worker → entrega (requiere broker). |
 
 ---
 
@@ -669,7 +758,7 @@ Datos sembrados **solo para desarrollo**. Cámbialos antes de desplegar.
 
 - `main`: versión estable.
 - `juanjo`, `Demy`: ramas de desarrollo.
-- `feature/v1.4.0-frontend`: rama de esta versión.
+- `feature/v1.5.0-rabbitmq`: rama de esta versión.
 - Cada módulo se integra mediante **Pull Request**.
 - Versionado semántico (`MAJOR.MINOR.PATCH`).
 
@@ -681,6 +770,7 @@ Datos sembrados **solo para desarrollo**. Cámbialos antes de desplegar.
 | `v1.2.0` | 16 reportes con filtros, exportación Excel/PDF y vistas para Power BI. |
 | `v1.3.0` | Panel operativo por API REST y Socket.IO, CORS configurable y pruebas del panel. |
 | `v1.4.0` | Frontend React + Vite: login, panel en vivo, mapa de puertas, vuelos y reportería. |
+| `v1.5.0` | Mensajería asíncrona con RabbitMQ, worker de entrega, traza de entregas y vista BI. |
 
 ### Convención de commits
 
@@ -695,10 +785,12 @@ chore: tareas de mantenimiento
 
 ---
 
-## Limitaciones conocidas de v1.4.0
+## Limitaciones conocidas de v1.5.0
 
 - El frontend es de consulta y reportería: el alta y edición de vuelos, pasajeros y equipajes se hacen por la API.
-- Sin mensajería asíncrona (RabbitMQ/Kafka): las notificaciones se guardan en la base, todavía no se envían por correo/push.
+- La entrega de correo es simulada por defecto (`CORREO_MODO=simulado`); para enviar correo real hay que configurar SMTP.
+- El publicador no usa el patrón *outbox*: si RabbitMQ está caído en el instante de la creación, el evento no se encola (la notificación sí queda en la base).
+- Solo se implementa el canal `CORREO`; `PUSH` y `SMS` están modelados pero no tienen proveedor.
 - Sin agente de IA ni RAG.
 - Sin despliegue del backend en la nube (la base ya puede estar en Neon).
 - Pruebas de integración únicamente; no hay pruebas unitarias.
@@ -716,8 +808,9 @@ chore: tareas de mantenimiento
 | **v1.2.0** | Reportería avanzada (16 reportes con Excel/PDF) y vistas para Power BI. |
 | **v1.3.0** | Panel operativo por API REST y Socket.IO, CORS configurable y pruebas del panel. |
 | **v1.4.0** | Frontend React + Vite con panel en vivo, mapa de puertas, vuelos y reportería. |
-| v1.5.0 | RabbitMQ/Kafka y agente de IA + RAG. |
-| v1.6.0 | Despliegue en producción y manual técnico. |
+| **v1.5.0** | Mensajería asíncrona con RabbitMQ, worker de entrega y traza de entregas. |
+| v1.6.0 | Agente de IA + RAG con Claude y pgvector. |
+| v1.7.0 | Despliegue en producción y manual técnico. |
 
 ---
 
