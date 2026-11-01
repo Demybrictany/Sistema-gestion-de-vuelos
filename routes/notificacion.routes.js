@@ -11,6 +11,11 @@ const {
   marcarTodasLeidas,
   eliminarNotificacion,
 } = require('../controllers/notificacion.controller');
+const {
+  listarEntregas,
+  resumenEntregas,
+  listarEntregasDeNotificacion,
+} = require('../controllers/entrega.controller');
 const { permitirRoles } = require('../middlewares/auth.middleware');
 const { validar } = require('../middlewares/validar.middleware');
 const {
@@ -27,6 +32,11 @@ router.patch(
   permitirRoles('PASAJERO'),
   marcarTodasLeidas
 );
+
+// Entregas de la mensajería asíncrona (antes de /:id)
+router.get('/entregas/resumen', staff, resumenEntregas);
+router.get('/entregas', staff, listarEntregas);
+router.get('/:id/entregas', staff, listarEntregasDeNotificacion);
 
 router.get('/', staff, obtenerNotificaciones);
 router.post('/', staff, validar(crearNotificacionSchema), crearNotificacion);

@@ -10,6 +10,7 @@ require('./models');
 
 const iniciarSocket = require('./lib/socket');
 const { obtenerOrigenes } = require('./lib/cors');
+const { estadoRabbit } = require('./lib/rabbitmq');
 
 const { verificarToken, permitirRoles } = require('./middlewares/auth.middleware');
 const contextoMiddleware = require('./middlewares/contexto.middleware');
@@ -57,7 +58,7 @@ app.use(express.json({ limit: '1mb' }));
 app.get('/', (req, res) => {
   res.json({
     mensaje: 'API del Sistema de Vuelos funcionando correctamente',
-    version: '1.2.0',
+    version: require('./package.json').version,
   });
 });
 
@@ -65,7 +66,19 @@ app.get('/', (req, res) => {
 app.get('/health', async (req, res) => {
   try {
     await sequelize.query('SELECT 1');
-    res.status(200).json({ estado: 'ok', base_datos: 'ok' });
+
+    const mensajeria = estadoRabbit();
+
+    res.status(200).json({
+      estado: 'ok',
+      base_datos: 'ok',
+      mensajeria: !mensajeria.configurado
+        ? 'no configurada'
+        : mensajeria.conectado
+          ? 'ok'
+          : 'configurada',
+      cola: mensajeria.cola,
+    });
   } catch (error) {
     res.status(503).json({ estado: 'error', base_datos: 'no disponible' });
   }
