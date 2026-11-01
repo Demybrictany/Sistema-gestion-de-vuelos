@@ -1,0 +1,56 @@
+# ============================================================
+# Entorno local de desarrollo — Sistema de Gestión de Vuelos
+#
+#   docker compose up -d        # levantar PostgreSQL y RabbitMQ
+#   docker compose ps           # ver estado
+#   docker compose logs -f      # ver registros
+#   docker compose down         # detener (conserva los datos)
+#   docker compose down -v      # detener y borrar los datos
+#
+# PostgreSQL se publica en el puerto 5433 para no chocar con una
+# instalación nativa que use el 5432. La imagen incluye pgvector,
+# que se usará en el agente de IA + RAG (v1.6.0).
+# ============================================================
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: vuelos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: aeropuerto_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      TZ: America/Mexico_City
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d aeropuerto_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: vuelos-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+      TZ: America/Mexico_City
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
