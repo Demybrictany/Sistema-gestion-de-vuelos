@@ -90,8 +90,14 @@ const esperarServidor = async () => {
 (async () => {
   await esperarServidor();
 
-  const secretario = await login('secretario', 'Secretario123!');
-  const carlos = await login('carlos', 'Pasajero123!');
+  const secretario = await login(
+    process.env.SECRETARIO_USUARIO || 'secretario',
+    process.env.SECRETARIO_PASSWORD || 'Secretario123!'
+  );
+  const carlos = await login(
+    process.env.PASAJERO_USUARIO || 'carlos',
+    process.env.PASAJERO_PASSWORD || 'Pasajero123!'
+  );
 
   let r = await req('GET', '/api/reportes');
   check('Reportes exige autenticación', r.status === 401, `(${r.status})`);
@@ -123,9 +129,16 @@ const esperarServidor = async () => {
     );
   }
 
+  // Rango relativo: el seed usa fechas relativas al día de ejecución.
+  const aFecha = (fecha) => fecha.toISOString().slice(0, 10);
+  const rangoDesde = new Date();
+  rangoDesde.setDate(rangoDesde.getDate() - 30);
+  const rangoHasta = new Date();
+  rangoHasta.setDate(rangoHasta.getDate() + 10);
+
   r = await req(
     'GET',
-    '/api/reportes/vuelos-por-estado?fecha_desde=2026-10-01&fecha_hasta=2026-10-31',
+    `/api/reportes/vuelos-por-estado?fecha_desde=${aFecha(rangoDesde)}&fecha_hasta=${aFecha(rangoHasta)}`,
     { token: secretario }
   );
   check(
