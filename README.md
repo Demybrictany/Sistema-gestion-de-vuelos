@@ -2,8 +2,9 @@
 
 Sistema para la gestión de **vuelos, pasajeros y equipaje** del Aeropuerto Internacional de la Ciudad de México (AICM). Administra puertas de embarque, bandas de equipaje, itinerarios, escalas, notificaciones, historial y auditoría.
 
-**Versión:** `v1.5.0`
+**Versión:** `v1.5.1`
 **Repositorio:** https://github.com/Demybrictany/Sistema-gestion-de-vuelos
+**Producción:** [frontend](https://sistema-gestion-de-vuelos.vercel.app) · [API](https://sistema-vuelos-api.onrender.com/health)
 **Equipo:** Juanjo, Demy
 
 ---
@@ -20,6 +21,17 @@ El sistema modela la operación del aeropuerto:
 - El catálogo incluye **25 puertas de embarque**, 10 bandas, 6 aeropuertos y datos de ejemplo.
 
 Incluye **16 reportes de negocio** con filtros y agregaciones, exportables a Excel y PDF, **vistas de solo lectura para Power BI**, un **panel operativo en tiempo real** expuesto por API REST y Socket.IO, un **frontend web** con inicio de sesión, mapa de puertas, vuelos y reportería, y **mensajería asíncrona con RabbitMQ** para entregar las notificaciones por correo mediante un worker. El agente de IA + RAG se desarrollará en la v1.6.0 (ver [Hoja de ruta](#hoja-de-ruta)).
+
+---
+
+## Novedades de la v1.5.1
+
+- **Despliegue en producción:** frontend en Vercel y API + worker en Render (plan gratuito), con Neon, CloudAMQP y SMTP.
+- **Entorno local con Docker:** PostgreSQL 16 con pgvector en el puerto 5433 y RabbitMQ 3.13 con panel de administración; `docker compose up -d`.
+- **Supervisor de producción:** `npm run start:prod` ejecuta API y worker en un solo servicio web, reinicia el worker si se cae y detiene todo si la API termina.
+- **Seed relativo:** al ejecutar `db:init` las fechas se desplazan para que siempre haya vuelos de hoy, pasados y futuros.
+- **Contraseñas:** script `npm run db:password` y credenciales de prueba configurables por entorno (`ADMIN_PASSWORD`, `SECRETARIO_PASSWORD`, `PASAJERO_PASSWORD`).
+- **Guía completa:** [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md).
 
 ---
 
@@ -376,6 +388,8 @@ node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 | `historial_equipaje` | 16 |
 | `auditoria` | 7 |
 
+Las fechas del seed son **relativas**: al ejecutarlo se desplazan los días necesarios para que el 2 de octubre de 2026 (el “hoy” original del archivo) sea la fecha real de ejecución. Así la demo siempre muestra vuelos del día, pasados y futuros.
+
 ### Reglas a nivel de base de datos
 
 - **Una puerta, un vuelo a la vez:** restricción de exclusión `no_solape_puerta`:
@@ -720,9 +734,25 @@ La guía completa de conexión, usuario de solo lectura, relaciones y tableros s
 
 ---
 
+## Despliegue en producción
+
+| Componente | Servicio | URL / notas |
+|---|---|---|
+| Frontend | Vercel (Hobby) | <https://sistema-gestion-de-vuelos.vercel.app> |
+| API + worker | Render (Web Service free) | <https://sistema-vuelos-api.onrender.com> |
+| Base de datos | Neon PostgreSQL | Conexión *pooled* con `sslmode=require`. |
+| Mensajería | CloudAMQP (Little Lemur) | AMQP URL `amqps://...`. |
+| Correo | Ethereal (SMTP de pruebas) | `CORREO_MODO=smtp`; los mensajes se leen en ethereal.email. |
+
+- Salud: `GET https://sistema-vuelos-api.onrender.com/health`.
+- El plan gratuito de Render no incluye *Background Workers*: `npm run start:prod` ejecuta la API y el worker en el mismo servicio y duerme tras ~15 minutos sin tráfico.
+- La guía paso a paso está en [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md).
+
+---
+
 ## Usuarios de prueba
 
-Datos sembrados **solo para desarrollo**. Cámbialos antes de desplegar.
+Datos sembrados **solo para desarrollo**. En producción las contraseñas de `admin` y `secretario` están rotadas; esta tabla aplica únicamente al seed local.
 
 | Usuario | Contraseña | Rol | Pasajero vinculado |
 |---|---|---|---|
@@ -740,12 +770,14 @@ Datos sembrados **solo para desarrollo**. Cámbialos antes de desplegar.
 | Script | Descripción |
 |---|---|
 | `npm start` | Inicia el servidor. |
+| `npm run start:prod` | Supervisor de producción: API + worker en un solo proceso (Render). |
 | `npm run dev` | Inicia con recarga automática (nodemon). |
 | `npm run worker` | Inicia el worker de notificaciones (requiere `RABBITMQ_URL`). |
 | `npm run dev:worker` | Inicia el worker con recarga automática. |
 | `npm run db:init` | Crea el esquema, carga los datos iniciales y crea las vistas de BI. |
 | `npm run db:views` | Recrea solo las vistas de Power BI (no borra datos). |
 | `npm run db:migrate` | Aplica la migración incremental de v1.5.0 (tabla de entregas). |
+| `npm run db:password -- <usuario> <clave>` | Cambia la contraseña de un usuario en la base configurada. |
 | `npm test` | Ejecuta las pruebas de API, reportería y panel. |
 | `npm run test:api` | Pruebas de integración de la API. |
 | `npm run test:reportes` | Pruebas del catálogo, filtros y exportaciones. |
@@ -758,7 +790,7 @@ Datos sembrados **solo para desarrollo**. Cámbialos antes de desplegar.
 
 - `main`: versión estable.
 - `juanjo`, `Demy`: ramas de desarrollo.
-- `feature/v1.5.0-rabbitmq`: rama de esta versión.
+- `feature/v1.5.1-despliegue`: rama de esta versión.
 - Cada módulo se integra mediante **Pull Request**.
 - Versionado semántico (`MAJOR.MINOR.PATCH`).
 
@@ -771,6 +803,7 @@ Datos sembrados **solo para desarrollo**. Cámbialos antes de desplegar.
 | `v1.3.0` | Panel operativo por API REST y Socket.IO, CORS configurable y pruebas del panel. |
 | `v1.4.0` | Frontend React + Vite: login, panel en vivo, mapa de puertas, vuelos y reportería. |
 | `v1.5.0` | Mensajería asíncrona con RabbitMQ, worker de entrega, traza de entregas y vista BI. |
+| `v1.5.1` | Despliegue en producción, entorno Docker, supervisor API+worker, seed relativo y cambio de contraseñas. |
 
 ### Convención de commits
 
@@ -785,14 +818,15 @@ chore: tareas de mantenimiento
 
 ---
 
-## Limitaciones conocidas de v1.5.0
+## Limitaciones conocidas de v1.5.1
 
 - El frontend es de consulta y reportería: el alta y edición de vuelos, pasajeros y equipajes se hacen por la API.
 - La entrega de correo es simulada por defecto (`CORREO_MODO=simulado`); para enviar correo real hay que configurar SMTP.
 - El publicador no usa el patrón *outbox*: si RabbitMQ está caído en el instante de la creación, el evento no se encola (la notificación sí queda en la base).
 - Solo se implementa el canal `CORREO`; `PUSH` y `SMS` están modelados pero no tienen proveedor.
 - Sin agente de IA ni RAG.
-- Sin despliegue del backend en la nube (la base ya puede estar en Neon).
+- El servicio gratuito de Render se duerme tras ~15 minutos sin tráfico; la primera petición puede tardar y el worker se pausa hasta despertar.
+- El correo se envía por Ethereal (bandeja de pruebas); para entrega real hay que configurar Gmail o Mailtrap.
 - Pruebas de integración únicamente; no hay pruebas unitarias.
 - Sin refresh tokens, bloqueo por intentos fallidos ni rate limiting.
 - El panel no filtra por fecha en el servidor: devuelve los últimos 300 vuelos y el cliente acota la vista.
@@ -809,8 +843,9 @@ chore: tareas de mantenimiento
 | **v1.3.0** | Panel operativo por API REST y Socket.IO, CORS configurable y pruebas del panel. |
 | **v1.4.0** | Frontend React + Vite con panel en vivo, mapa de puertas, vuelos y reportería. |
 | **v1.5.0** | Mensajería asíncrona con RabbitMQ, worker de entrega y traza de entregas. |
-| v1.6.0 | Agente de IA + RAG con Claude y pgvector. |
-| v1.7.0 | Despliegue en producción y manual técnico. |
+| **v1.5.1** | Despliegue en producción, entorno Docker, supervisor API+worker y seed relativo. |
+| v1.6.0 | Agente de IA + RAG con pgvector, citas de fuentes y logs del agente. |
+| v1.7.0 | Tablero `.pbix` de Power BI y manual técnico. |
 
 ---
 
