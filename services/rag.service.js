@@ -47,11 +47,28 @@ const extraerTitulo = (contenido, archivo) => {
   return linea ? linea.replace(/^#\s+/, '').trim() : archivo;
 };
 
-// Trocea por párrafos, conserva un solape corto entre fragmentos para
-// no perder el contexto de una frase que cae en el corte.
+// Parte un texto demasiado largo por longitud, conservando un solape.
+const partirPorLongitud = (texto) => {
+  const partes = [];
+  let resto = texto;
+
+  while (resto.length > TAMANO_FRAGMENTO) {
+    partes.push(resto.slice(0, TAMANO_FRAGMENTO).trim());
+    resto = resto.slice(TAMANO_FRAGMENTO - SOLAPE);
+  }
+
+  if (resto.trim()) {
+    partes.push(resto.trim());
+  }
+
+  return partes;
+};
+
+// Trocea por párrafos (acepta LF y CRLF), conserva un solape corto y
+// parte los bloques que por sí solos superan el límite.
 const trocear = (contenido) => {
   const bloques = contenido
-    .split(/\n{2,}/)
+    .split(/\r?\n\s*\r?\n/)
     .map((bloque) => bloque.trim())
     .filter(Boolean);
 
@@ -64,19 +81,13 @@ const trocear = (contenido) => {
     if (candidato.length > TAMANO_FRAGMENTO && actual) {
       fragmentos.push(actual.trim());
       actual = `${actual.slice(-SOLAPE)}\n\n${bloque}`;
-
-      // Un bloque aislado más grande que el límite se parte por longitud.
-      while (actual.length > TAMANO_FRAGMENTO) {
-        fragmentos.push(actual.slice(0, TAMANO_FRAGMENTO).trim());
-        actual = actual.slice(TAMANO_FRAGMENTO - SOLAPE);
-      }
     } else {
       actual = candidato;
     }
   }
 
   if (actual.trim()) {
-    fragmentos.push(actual.trim());
+    fragmentos.push(...partirPorLongitud(actual));
   }
 
   return fragmentos;
@@ -100,19 +111,29 @@ const ingestar = async () => {
       'utf8'
     );
     const hash = hashTexto(contenido);
+    const fragmentos = trocear(contenido);
 
+    // Si el documento no cambió y el número de fragmentos coincide, no
+    // se vuelve a indexar. Si cambió el troceado, se reindexa.
     const existentes = await sequelize.query(
-      'SELECT id_documento FROM documentos_rag WHERE hash = :hash LIMIT 1',
+      `SELECT d.id_documento, COUNT(f.id_fragmento)::int AS fragmentos
+         FROM documentos_rag d
+         LEFT JOIN fragmentos_rag f ON f.id_documento = d.id_documento
+        WHERE d.hash = :hash
+        GROUP BY d.id_documento
+        LIMIT 1`,
       { replacements: { hash }, type: QueryTypes.SELECT }
     );
 
-    if (existentes.length > 0) {
+    if (
+      existentes.length > 0 &&
+      existentes[0].fragmentos === fragmentos.length
+    ) {
       resumen.push({ archivo, estado: 'sin cambios', fragmentos: 0 });
       continue;
     }
 
     const titulo = extraerTitulo(contenido, archivo);
-    const fragmentos = trocear(contenido);
 
     // Si el documento cambió, se reemplaza completo.
     await sequelize.query(
