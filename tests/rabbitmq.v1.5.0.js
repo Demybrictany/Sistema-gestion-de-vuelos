@@ -110,7 +110,10 @@ const esperarEntrega = async (token, idNotificacion) => {
 
   await esperarServidor();
 
-  const admin = await login('admin', 'Admin123!');
+  const admin = await login(
+    process.env.ADMIN_USUARIO || 'admin',
+    process.env.ADMIN_PASSWORD || 'Admin123!'
+  );
 
   // Un pasajero con correo permite comprobar la entrega por CORREO.
   const pasajeros = await req('GET', '/api/pasajeros', { token: admin });
