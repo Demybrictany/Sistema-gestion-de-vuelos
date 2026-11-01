@@ -1,0 +1,86 @@
+# ============================================================
+# Blueprint de Render — Sistema de Gestión de Vuelos (AICM)
+#
+# Un único servicio web (plan gratuito) ejecuta la API y el worker de
+# notificaciones mediante scripts/iniciar-produccion.js. El plan gratuito
+# de Render no ofrece Background Workers, y separarlos obligaría a pagar.
+#
+# Base de datos: Neon (externa). Mensajería: CloudAMQP (externa).
+# Pasos completos: docs/DESPLIEGUE.md
+# ============================================================
+
+services:
+  - type: web
+    name: sistema-vuelos-api
+    runtime: node
+    plan: free
+    region: virginia
+    buildCommand: npm ci
+    startCommand: npm run start:prod
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # --- Entorno ---
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: TZ
+        value: America/Mexico_City
+
+      # --- Base de datos (Neon) ---
+      - key: DATABASE_URL
+        sync: false
+      - key: DB_SSL
+        value: "true"
+
+      # --- Autenticación ---
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 8h
+
+      # --- CORS: URL del frontend en Vercel ---
+      # Se puede poner "*" para el primer despliegue y luego restringirlo.
+      - key: CORS_ORIGIN
+        sync: false
+
+      # --- Mensajería asíncrona (CloudAMQP) ---
+      - key: RABBITMQ_URL
+        sync: false
+      - key: RABBITMQ_EXCHANGE
+        value: sistema.vuelos
+      - key: RABBITMQ_EXCHANGE_FALLIDAS
+        value: sistema.vuelos.fallidas
+      - key: RABBITMQ_QUEUE
+        value: notificaciones.pasajeros
+      - key: RABBITMQ_QUEUE_FALLIDAS
+        value: notificaciones.fallidas
+      - key: RABBITMQ_QUEUE_REINTENTOS
+        value: notificaciones.reintentos
+      - key: RABBITMQ_MAX_REINTENTOS
+        value: "3"
+      - key: RABBITMQ_TTL_REINTENTO_MS
+        value: "5000"
+      - key: RABBITMQ_PREFETCH
+        value: "10"
+      - key: WORKER_REINTENTO_MS
+        value: "5000"
+
+      # --- Entrega de correo (Ethereal, Mailtrap o Gmail) ---
+      # Arranca en "simulado" para que el primer despliegue no falle si
+      # aún no hay SMTP. Cuando estén las credenciales, cambia a "smtp".
+      - key: CORREO_MODO
+        value: simulado
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false

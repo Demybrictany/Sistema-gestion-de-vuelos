@@ -93,7 +93,10 @@ const KPIS_ESPERADOS = [
 (async () => {
   await esperarServidor();
 
-  const admin = await login('admin', 'Admin123!');
+  const admin = await login(
+    process.env.ADMIN_USUARIO || 'admin',
+    process.env.ADMIN_PASSWORD || 'Admin123!'
+  );
   const carlos = await login('carlos', 'Pasajero123!');
 
   let r = await req('GET', '/api/panel');
