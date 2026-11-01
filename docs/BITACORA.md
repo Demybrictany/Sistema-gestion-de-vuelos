@@ -6,6 +6,39 @@
 
 ---
 
+## 2026-11-01 · Sesión 5 · Agente de IA + RAG (v1.6.0)
+
+- **Objetivo:** implementar el agente de IA con RAG, herramientas sobre datos reales, citas de fuentes y logs, sin depender de una API key para la demo.
+- **Rama:** `feature/v1.6.0-agente-ia`, creada desde `feature/v1.5.1-despliegue`.
+- **Hecho en esta sesión:**
+  - Esquema y migración v1.6.0: `documentos_rag`, `fragmentos_rag` (con `tsvector` generado y `vector(1024)` opcional) e `interacciones_agente`; vista `bi_interacciones_agente`.
+  - Corpus RAG en `docs/rag/`: manual operativo, políticas de pasajero, FAQ y catálogo de aeropuertos.
+  - Ingesta idempotente por hash (`npm run rag:ingestar`), troceado con solape y embeddings opcionales con Voyage AI.
+  - Recuperación híbrida: pgvector si hay embeddings; texto completo en español con `websearch_to_tsquery`/`ts_rank`; `ILIKE` como respaldo.
+  - Herramientas con alcance por rol: vuelos, puertas, equipaje, escalas, mis vuelos y búsqueda documental. El filtro por pasajero se hace en SQL.
+  - Proveedor de IA intercambiable: modo local determinista (RAG + herramientas) y Claude con tool use mediante el SDK oficial (`claude-opus-5-5`), con caída al modo local si la API falla.
+  - `POST /api/agente/consultas`, logs para admin, listado de documentos e ingesta; límite de 30 consultas/minuto por usuario.
+  - Chat **Asistente** en el frontend con sugerencias y fuentes citadas.
+  - Pruebas `test:agente` y migración/ingesta aplicadas a Neon.
+- **Archivos tocados:** `db/postgres/schema.sql`, `db/postgres/views_bi.sql`, `scripts/migrate-v1.6.0.js`, `scripts/ingestar-rag.js`, `docs/rag/*.md`, `docs/AGENTE_IA.md`, `services/rag.service.js`, `services/agente.tools.js`, `services/agente.service.js`, `lib/agente.proveedor.js`, `lib/embeddings.js`, `controllers/agente.controller.js`, `routes/agente.routes.js`, `middlewares/rate-limit.middleware.js`, `validators/schemas.js`, `app.js`, `tests/agente.v1.6.0.js`, `frontend/src/App.jsx`, `frontend/src/components/AgentChat.jsx`, `frontend/src/styles.css`, `frontend/README.md`, `README.md`, `.env.example`, `render.yaml`, `package.json`, `frontend/package.json` y lockfiles.
+- **Verificación:**
+  - `npm run rag:ingestar` → 4 documentos, 13 fragmentos.
+  - `npm run test:agente` → **12 PASS / 0 FAIL** (ingesta, citas, datos operativos, alcance de pasajeros, logs, permisos e idempotencia).
+  - `npm test` → **66 + 29 + 14 + 12 PASS**, 0 FAIL; `npm run test:rabbitmq` → **10 PASS / 0 FAIL**.
+  - `npm run build` en `frontend/` → 74 módulos; `index.js` 218.12 kB (68.66 kB gzip).
+  - Neon: migración aplicada (0 documentos al inicio), ingesta de 13 fragmentos y 11 vistas BI.
+- **Versión:** **MINOR** — `1.5.1` → `1.6.0`: agente de IA, RAG, herramientas, logs y chat; compatible con la API existente.
+- **Commits/PR:** `702b9db` (base de datos), `d14d1fd` (agente), `8ceec21` (UI), `3163270` (pruebas) y el commit de esta documentación; PR #12 desde el fork.
+- **Pendiente / siguiente paso:** cambiar la rama del servicio de Render a `feature/v1.6.0-agente-ia` y redesplegar; opcionalmente definir `ANTHROPIC_API_KEY`; aprobar y fusionar los PR #11 y #12; después, Power BI y manual técnico.
+- **Decisiones o riesgos:**
+  - El modo local no es un modelo generativo: compone respuestas con fragmentos y datos. Para respuestas conversacionales hace falta una API key.
+  - El RAG exige la extensión `vector`; está en la imagen Docker y en Neon.
+  - Sin `VOYAGE_API_KEY` no hay búsqueda vectorial; se usa texto completo en español.
+  - El límite de consultas es en memoria; en varias instancias debe moverse a Redis o al proxy.
+  - El agente no modifica datos y nunca devuelve información de otros pasajeros.
+
+---
+
 ## 2026-11-01 · Sesión 4 · Entorno local, despliegue en producción y v1.5.1
 
 - **Objetivo:** levantar el sistema completo en local y desplegarlo en producción con el plan gratuito de Render + Vercel.
@@ -30,7 +63,7 @@
   - Frontend: el bundle de Vercel contiene la URL de Render; login cruzado y `GET /api/panel` con el `Origin` de Vercel responden 200 (12 vuelos, 25 puertas, 10 bandas, 15 KPIs).
   - Neon: 12 vuelos, 5 de hoy, rango del 31/10 al 05/11.
 - **Versión:** **PATCH** — `1.5.0` → `1.5.1`: despliegue, entorno local, seed relativo y pruebas; sin cambios de contrato.
-- **Commits/PR:** `6d57588` (entorno Docker), `6199dbc` (despliegue), `b0da993` (seed relativo y pruebas) y `ad4f467` (release v1.5.1); tag `v1.5.1`. PR #11 desde el fork.
+- **Commits/PR:** el entorno Docker y el despliegue entraron a `main` con el PR #11; tras rebasar, los commits propios son `4059a4c` (seed relativo y pruebas), `0f56c76` (release v1.5.1) y `5f70d1d` (esta bitácora). Tag `v1.5.1` en la rama del fork.
 - **Pendiente / siguiente paso:** Demy debe aprobar y fusionar el PR #11; cambiar `CORS_ORIGIN` en Render al dominio de Vercel; iniciar la v1.6.0 (agente de IA + RAG).
 - **Decisiones o riesgos:**
   - Render free duerme el servicio tras ~15 minutos sin tráfico: el worker también se pausa y los mensajes esperan en CloudAMQP. Para la defensa conviene despertarlo antes.
