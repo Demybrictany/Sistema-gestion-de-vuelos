@@ -1,6 +1,6 @@
 {
   "name": "sistema-vuelos-backend",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "description": "Sistema de gestión de vuelos, pasajeros y equipaje del Aeropuerto Internacional de la Ciudad de México",
   "main": "app.js",
   "scripts": {
