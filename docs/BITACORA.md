@@ -6,6 +6,50 @@
 
 ---
 
+## 2026-11-02 · Sesión 8 · Release v1.6.2
+
+- **Objetivo:** cerrar la release PATCH 1.6.2 con las correcciones de dominio ya fusionadas en `main`.
+- **Rama:** `release/v1.6.2`, creada desde `main` (`ccb888e`); PR de release hacia `main`.
+- **Hecho en esta sesión:**
+  - Versión `1.6.2` en backend y frontend, incluidos los lockfiles.
+  - README (novedades, tabla de versiones, limitaciones y hoja de ruta), manual técnico, README del frontend y `CLAUDE.md` actualizados.
+  - Bitácora actualizada con las sesiones 7 y 8.
+  - Tag anotado `v1.6.2` sobre el commit de release y publicación de los tags pendientes `v1.5.1`, `v1.6.0` y `v1.6.1`.
+- **Archivos tocados:** `package.json`, `package-lock.json`, `frontend/package.json`, `frontend/package-lock.json`, `README.md`, `CLAUDE.md`, `docs/MANUAL_TECNICO.md`, `frontend/README.md`, `docs/BITACORA.md`.
+- **Verificación:** `node --check` en los 8 archivos JavaScript modificados → **OK**; versiones de los cuatro archivos JSON → **1.6.2**. No se re-ejecutó la suite de integración en esta sesión de release.
+- **Versión:** **PATCH** — `1.6.1` → `1.6.2`: correcciones compatibles de dominio y entregas; sin cambios de contrato.
+- **Commits/PR:** commit `chore(release): v1.6.2` y PR de release.
+- **Pendiente / siguiente paso:** fusionar el PR, redesplegar Render y comprobar que `GET /` devuelva `1.6.2`; crear el `.pbix` de Power BI; commitear `manual/`.
+- **Decisiones o riesgos:**
+  - El tag se crea sobre el commit de release de la rama; el PR debe fusionarse con merge commit para que quede en el historial de `main`.
+  - La instalación de Render debe apuntar a `main` y tener auto-deploy activo; el 02/11 seguía sirviendo `1.5.1`.
+
+---
+
+## 2026-11-02 · Sesión 7 · Correcciones de dominio (v1.6.2)
+
+- **Objetivo:** corregir los siete defectos de dominio detectados en la revisión del 02/11.
+- **Rama:** `fix/v1.6.2-correcciones`, fusionada en `main` con el PR #16 (`ccb888e`).
+- **Hecho en esta sesión:**
+  - Escalas con llegada y salida en el mismo aeropuerto (validación por IDs únicos).
+  - `registrarTramo` respeta la máquina de estados del equipaje; `EN_BANDA` y `DANADO` ya no pasan a `EN_TRANSITO`.
+  - Las reservas canceladas quedan excluidas de los avisos del vuelo.
+  - Asientos únicos por vuelo: normalización a mayúsculas, bloqueo del vuelo y respuesta 409.
+  - `PUT /api/itinerarios/:id` reutiliza las validaciones del alta.
+  - Entrega: el contador de intentos empieza en 0 y se añadió un reclamo atómico de la fila.
+  - La herramienta de puertas del agente ya no anuncia el estado inexistente `OCUPADA`.
+  - Regresión de escala con llegada y salida en el mismo aeropuerto.
+- **Archivos tocados:** `services/escala.service.js`, `services/equipaje.service.js`, `services/notificacion.service.js`, `services/entrega.service.js`, `services/pasajero_vuelo.service.js`, `controllers/itinerario.controller.js`, `services/agente.tools.js`, `tests/escalas.v1.6.1.js`.
+- **Verificación:** `npm run test:escalas` → **13 PASS / 0 FAIL**; pruebas dirigidas de asientos, itinerarios, equipaje, notificaciones y entrega → **20 PASS**; `node --check` en los archivos modificados → **OK** (registrado en `e155c8a`).
+- **Versión:** **PATCH** — `1.6.1` → `1.6.2`: correcciones compatibles de dominio y entregas.
+- **Commits/PR:** `e155c8a` / PR #16.
+- **Pendiente / siguiente paso:** índice único parcial de asiento en la base; corregir el reclamo de entrega para evitar el doble envío entre workers.
+- **Decisiones o riesgos:**
+  - La unicidad de asiento se garantiza en el servicio con bloqueo del vuelo; todavía no hay restricción en la base.
+  - El reclamo de entrega incrementa `intento` pero no reserva la fila durante el envío: dos workers simultáneos aún podrían enviar el correo dos veces.
+
+---
+
 ## 2026-11-01 · Sesión 6 · Avisos de dominio y corrección del RAG (v1.6.1)
 
 - **Objetivo:** cumplir los dos avisos de dominio que faltaban (hora de salida inicial y puerta de escala) y corregir el troceado del corpus RAG.

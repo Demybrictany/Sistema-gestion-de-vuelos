@@ -1,6 +1,6 @@
 # Manual técnico — Sistema de Gestión de Vuelos AICM
 
-**Versión:** 1.6.1
+**Versión:** 1.6.2
 **Repositorio:** https://github.com/Demybrictany/Sistema-gestion-de-vuelos
 **Producción:** [frontend](https://sistema-gestion-de-vuelos.vercel.app) · [API](https://sistema-vuelos-api.onrender.com/health)
 **Equipo:** Juanjo, Demy · Universidad Mesoamericana Quetzaltenango
@@ -370,6 +370,7 @@ Resultados de referencia: **66 + 29 + 14 + 12 PASS** y **10 PASS** en RabbitMQ.
 | v1.5.1 | Despliegue, Docker y seed relativo. |
 | v1.6.0 | Agente de IA + RAG, logs y chat. |
 | v1.6.1 | Avisos de reserva y de puerta de escala; servicio de escalas y corrección del RAG. |
+| v1.6.2 | Correcciones de escalas, asientos, equipaje, itinerarios y entregas. |
 
 ---
 

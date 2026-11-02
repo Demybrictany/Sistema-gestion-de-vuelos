@@ -2,7 +2,7 @@
 
 Sistema para la gestión de **vuelos, pasajeros y equipaje** del Aeropuerto Internacional de la Ciudad de México (AICM). Administra puertas de embarque, bandas de equipaje, itinerarios, escalas, notificaciones, historial y auditoría.
 
-**Versión:** `v1.6.1`
+**Versión:** `v1.6.2`
 **Repositorio:** https://github.com/Demybrictany/Sistema-gestion-de-vuelos
 **Producción:** [frontend](https://sistema-gestion-de-vuelos.vercel.app) · [API](https://sistema-vuelos-api.onrender.com/health)
 **Equipo:** Juanjo, Demy
@@ -21,6 +21,19 @@ El sistema modela la operación del aeropuerto:
 - El catálogo incluye **25 puertas de embarque**, 10 bandas, 6 aeropuertos y datos de ejemplo.
 
 Incluye **16 reportes de negocio** con filtros y agregaciones, exportables a Excel y PDF, **vistas de solo lectura para Power BI**, un **panel operativo en tiempo real** expuesto por API REST y Socket.IO, un **frontend web** con inicio de sesión, mapa de puertas, vuelos y reportería, y **mensajería asíncrona con RabbitMQ** para entregar las notificaciones por correo mediante un worker. Incluye un **agente de IA con RAG** que consulta datos operativos y la documentación del negocio, responde con **citas de fuentes** y registra cada interacción para auditoría (ver [`docs/AGENTE_IA.md`](docs/AGENTE_IA.md)).
+
+---
+
+## Novedades de la v1.6.2
+
+- **Escalas en el mismo aeropuerto:** una conexión puede llegar y salir del mismo aeropuerto; la validación cuenta IDs únicos.
+- **Máquina de estados del equipaje:** `registrarTramo` ya no revive equipajes `EN_BANDA` o `DANADO` como `EN_TRANSITO`.
+- **Avisos a reservas canceladas:** los cambios de vuelo solo notifican a reservas activas.
+- **Asientos únicos por vuelo:** se normaliza el número, se bloquea el vuelo y se responde 409 si el asiento ya está ocupado.
+- **Actualización de itinerarios:** `PUT /api/itinerarios/:id` aplica las mismas reglas que el alta.
+- **Entregas:** el contador de intentos empieza en 0 y se añadió un reclamo atómico de la fila; la ventana de doble envío entre workers queda documentada como limitación.
+- **Agente:** la herramienta de puertas ya no anuncia el estado inexistente `OCUPADA`.
+- **Pruebas:** `npm run test:escalas` (13 PASS) y pruebas dirigidas de asientos, itinerarios, equipaje, notificaciones y entrega (20 PASS).
 
 ---
 
@@ -854,7 +867,7 @@ Datos sembrados **solo para desarrollo**. En producción las contraseñas de `ad
 
 - `main`: versión estable.
 - `juanjo`, `Demy`: ramas de desarrollo.
-- `feature/v1.6.0-agente-ia`: rama de esta versión.
+- `release/v1.6.2`: rama de esta versión.
 - Cada módulo se integra mediante **Pull Request**.
 - Versionado semántico (`MAJOR.MINOR.PATCH`).
 
@@ -870,6 +883,7 @@ Datos sembrados **solo para desarrollo**. En producción las contraseñas de `ad
 | `v1.5.1` | Despliegue en producción, entorno Docker, supervisor API+worker, seed relativo y cambio de contraseñas. |
 | `v1.6.0` | Agente de IA + RAG con citas, herramientas por rol, logs del agente, pgvector opcional y chat en el frontend. |
 | `v1.6.1` | Aviso inicial de reserva, aviso de puerta de escala, servicio de escalas y corrección del troceado RAG. |
+| `v1.6.2` | Correcciones de escalas en el mismo aeropuerto, asientos únicos, estados de equipaje, validación de itinerarios y entregas. |
 
 ### Convención de commits
 
@@ -884,7 +898,7 @@ chore: tareas de mantenimiento
 
 ---
 
-## Limitaciones conocidas de v1.6.1
+## Limitaciones conocidas de v1.6.2
 
 - El frontend es de consulta y reportería: el alta y edición de vuelos, pasajeros y equipajes se hacen por la API.
 - La entrega de correo es simulada por defecto (`CORREO_MODO=simulado`); para enviar correo real hay que configurar SMTP.
@@ -895,6 +909,7 @@ chore: tareas de mantenimiento
 - El agente es de consulta: no crea ni modifica datos.
 - El servicio gratuito de Render se duerme tras ~15 minutos sin tráfico; la primera petición puede tardar y el worker se pausa hasta despertar.
 - El correo se envía por Ethereal (bandeja de pruebas); para entrega real hay que configurar Gmail o Mailtrap.
+- El reclamo de entrega incrementa `intento` y comprueba el estado terminal, pero no reserva la fila durante el envío: con dos workers procesando el mismo aviso a la vez, el correo podría enviarse dos veces. Se corregirá con un estado `ENVIANDO` o un bloqueo de asesoría.
 - Pruebas de integración únicamente; no hay pruebas unitarias.
 - Sin refresh tokens, bloqueo por intentos fallidos ni rate limiting.
 - El panel no filtra por fecha en el servidor: devuelve los últimos 300 vuelos y el cliente acota la vista.
@@ -914,6 +929,7 @@ chore: tareas de mantenimiento
 | **v1.5.1** | Despliegue en producción, entorno Docker, supervisor API+worker y seed relativo. |
 | **v1.6.0** | Agente de IA + RAG con pgvector, citas de fuentes, herramientas por rol, logs y chat en el frontend. |
 | **v1.6.1** | Avisos de reserva y de puerta de escala, servicio de escalas y corrección del RAG. |
+| **v1.6.2** | Correcciones de escalas, asientos, equipaje, itinerarios y entregas; release PATCH. |
 | v1.7.0 | Tablero `.pbix` de Power BI y cierre del proyecto. |
 
 ---
