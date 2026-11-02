@@ -464,9 +464,19 @@ const filtrosReporte = z
     { message: 'fecha_desde no puede ser posterior a fecha_hasta' }
   );
 
+// ------------------------------------------------------------
+// Agente de IA
+// ------------------------------------------------------------
+const consultaAgente = z
+  .object({
+    pregunta: z.string().trim().min(3).max(1000),
+  })
+  .strict();
+
 module.exports = {
   filtrosReporte,
   login,
+  consultaAgente,
   crearRol,
   actualizarRol,
   crearUsuario,

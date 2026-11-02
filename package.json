@@ -1,10 +1,10 @@
 {
   "name": "sistema-vuelos-backend",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Sistema de gestión de vuelos, pasajeros y equipaje del Aeropuerto Internacional de la Ciudad de México",
   "main": "app.js",
   "scripts": {
-    "test": "npm run test:api && npm run test:reportes && npm run test:panel",
+    "test": "npm run test:api && npm run test:reportes && npm run test:panel && npm run test:agente",
     "start": "node app.js",
     "start:prod": "node scripts/iniciar-produccion.js",
     "dev": "nodemon app.js",
@@ -14,10 +14,13 @@
     "db:init": "node scripts/init-db.js",
     "db:views": "node scripts/init-views.js",
     "db:migrate": "node scripts/migrate-v1.5.0.js",
+    "db:migrate:agente": "node scripts/migrate-v1.6.0.js",
+    "rag:ingestar": "node scripts/ingestar-rag.js",
     "test:api": "node tests/api.v1.1.0.js",
     "test:reportes": "node tests/reportes.v1.2.0.js",
     "test:panel": "node tests/panel.v1.3.0.js",
-    "test:rabbitmq": "node tests/rabbitmq.v1.5.0.js"
+    "test:rabbitmq": "node tests/rabbitmq.v1.5.0.js",
+    "test:agente": "node tests/agente.v1.6.0.js"
   },
   "keywords": [
     "aeropuerto",
@@ -32,6 +35,7 @@
     "node": ">=18"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.3.0",
     "amqplib": "^2.2.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
