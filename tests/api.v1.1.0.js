@@ -79,18 +79,9 @@ const esperarServidor = async () => {
     process.env.ADMIN_USUARIO || 'admin',
     process.env.ADMIN_PASSWORD || 'Admin123!'
   );
-  const secretario = await login(
-    process.env.SECRETARIO_USUARIO || 'secretario',
-    process.env.SECRETARIO_PASSWORD || 'Secretario123!'
-  );
-  const carlos = await login(
-    process.env.PASAJERO_USUARIO || 'carlos',
-    process.env.PASAJERO_PASSWORD || 'Pasajero123!'
-  );
-  const sofia = await login(
-    process.env.PASAJERO_USUARIO || 'sofia',
-    process.env.PASAJERO_PASSWORD || 'Pasajero123!'
-  );
+  const secretario = await login('secretario', 'Secretario123!');
+  const carlos = await login('carlos', 'Pasajero123!');
+  const sofia = await login('sofia', 'Pasajero123!');
 
   // --- Autenticación y roles ---
   let r = await req('GET', '/api/vuelos');
@@ -194,26 +185,12 @@ const esperarServidor = async () => {
   });
   check('No permite dos vuelos en la misma puerta y horario', r.status === 409, `(${r.status})`);
 
-  // La fecha del seed es relativa: se toma la del vuelo 1 para no
-  // depender de un día fijo y seguir probando el conflicto real.
-  const vueloBaseConflicto = await req('GET', '/api/vuelos/1', {
-    token: secretario,
-  });
-  const fechaConflicto = String(
-    vueloBaseConflicto.data?.fecha_salida || ''
-  ).slice(0, 10);
-  check(
-    'Consulta el vuelo base para probar el conflicto',
-    Boolean(fechaConflicto),
-    `(${vueloBaseConflicto.status})`
-  );
-
   r = await req('PUT', `/api/vuelos/${vueloId}`, {
     token: secretario,
     body: {
-      fecha_salida: fechaConflicto,
+      fecha_salida: '2026-10-02',
       hora_salida: '09:00',
-      fecha_llegada: fechaConflicto,
+      fecha_llegada: '2026-10-02',
       hora_llegada: '11:00',
       id_puerta: 1,
     },

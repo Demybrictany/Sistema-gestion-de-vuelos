@@ -67,18 +67,6 @@ services:
       - key: WORKER_REINTENTO_MS
         value: "5000"
 
-      # --- Agente de IA + RAG ---
-      # En local responde con RAG y herramientas. Para usar Claude,
-      # define ANTHROPIC_API_KEY y AGENTE_PROVEEDOR=claude.
-      - key: AGENTE_PROVEEDOR
-        value: local
-      - key: AGENTE_MODELO
-        value: claude-opus-5-5
-      - key: ANTHROPIC_API_KEY
-        sync: false
-      - key: VOYAGE_API_KEY
-        sync: false
-
       # --- Entrega de correo (Ethereal, Mailtrap o Gmail) ---
       # Arranca en "simulado" para que el primer despliegue no falle si
       # aún no hay SMTP. Cuando estén las credenciales, cambia a "smtp".
