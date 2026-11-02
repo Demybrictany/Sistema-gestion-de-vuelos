@@ -284,7 +284,7 @@ const TOOLS = [
       type: 'object',
       properties: {
         zona: { type: 'string', description: 'NACIONAL o INTERNACIONAL' },
-        estado: { type: 'string', description: 'DISPONIBLE, OCUPADA, MANTENIMIENTO o INACTIVA' },
+        estado: { type: 'string', description: 'DISPONIBLE, MANTENIMIENTO o INACTIVA' },
       },
       additionalProperties: false,
     },

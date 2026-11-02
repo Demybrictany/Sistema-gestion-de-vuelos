@@ -1,3 +1,5 @@
+const { Op } = require('sequelize');
+
 const Notificacion = require('../models/notificacion.model');
 const PasajeroVuelo = require('../models/pasajero_vuelo.model');
 
@@ -33,7 +35,11 @@ const notificarPasajerosDeVuelo = async ({
   transaction,
 }) => {
   const registros = await PasajeroVuelo.findAll({
-    where: { id_vuelo: idVuelo },
+    where: {
+      id_vuelo: idVuelo,
+      // Una reserva cancelada ya no debe recibir avisos del vuelo.
+      estado: { [Op.ne]: 'CANCELADO' },
+    },
     attributes: ['id_pasajero'],
     transaction,
   });

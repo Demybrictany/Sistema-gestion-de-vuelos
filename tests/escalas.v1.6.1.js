@@ -207,6 +207,39 @@ const buscarNotificacion = (notificaciones, filtro) =>
     `(${r.status})`
   );
 
+  // Regresión: una conexión puede llegar y salir del mismo aeropuerto.
+  let idEscalaMismoAeropuerto = null;
+
+  r = await req('POST', '/api/escalas', {
+    token: admin,
+    body: {
+      id_itinerario: 1,
+      id_vuelo: idVuelo,
+      numero_escala: 11,
+      aeropuerto_llegada: 1,
+      aeropuerto_salida: 1,
+      hora_llegada: '2027-02-01T19:00:00Z',
+      hora_salida: '2027-02-01T21:00:00Z',
+    },
+  });
+  check(
+    'Acepta una escala con llegada y salida en el mismo aeropuerto',
+    r.status === 201,
+    `(${r.status})`
+  );
+  idEscalaMismoAeropuerto = r.data?.escala?.id_escala || null;
+
+  if (idEscalaMismoAeropuerto) {
+    r = await req('DELETE', `/api/escalas/${idEscalaMismoAeropuerto}`, {
+      token: admin,
+    });
+    check(
+      'Elimina la escala del mismo aeropuerto',
+      r.status === 200,
+      `(${r.status})`
+    );
+  }
+
   if (idEscala) {
     r = await req('DELETE', `/api/escalas/${idEscala}`, { token: admin });
     check('Elimina la escala de prueba', r.status === 200, `(${r.status})`);

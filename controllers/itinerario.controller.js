@@ -2,6 +2,40 @@ const Itinerario = require('../models/itinerario.model');
 const Pasajero = require('../models/pasajero.model');
 const Aeropuerto = require('../models/aeropuerto.model');
 
+// Valida las referencias y las reglas de negocio del itinerario. Se usa
+// tanto en el alta como en la actualización para que un PUT no pueda
+// dejar datos que el POST rechazaría.
+const validarContenido = async ({
+  id_pasajero,
+  origen_principal,
+  destino_final,
+  fecha_inicio,
+  fecha_fin,
+}) => {
+  const pasajero = await Pasajero.findByPk(id_pasajero);
+
+  if (!pasajero) {
+    return 'El pasajero seleccionado no existe';
+  }
+
+  const origen = await Aeropuerto.findByPk(origen_principal);
+  const destino = await Aeropuerto.findByPk(destino_final);
+
+  if (!origen || !destino) {
+    return 'El aeropuerto de origen o destino no existe';
+  }
+
+  if (Number(origen_principal) === Number(destino_final)) {
+    return 'El origen y el destino final no pueden ser el mismo';
+  }
+
+  if (new Date(fecha_fin) < new Date(fecha_inicio)) {
+    return 'La fecha final no puede ser anterior a la fecha de inicio';
+  }
+
+  return null;
+};
+
 // Obtener todos los itinerarios
 const obtenerItinerarios = async (req, res) => {
   try {
@@ -93,32 +127,17 @@ const crearItinerario = async (req, res) => {
       });
     }
 
-    const pasajero = await Pasajero.findByPk(id_pasajero);
+    const errorContenido = await validarContenido({
+      id_pasajero,
+      origen_principal,
+      destino_final,
+      fecha_inicio,
+      fecha_fin,
+    });
 
-    if (!pasajero) {
+    if (errorContenido) {
       return res.status(400).json({
-        mensaje: 'El pasajero seleccionado no existe',
-      });
-    }
-
-    const origen = await Aeropuerto.findByPk(origen_principal);
-    const destino = await Aeropuerto.findByPk(destino_final);
-
-    if (!origen || !destino) {
-      return res.status(400).json({
-        mensaje: 'El aeropuerto de origen o destino no existe',
-      });
-    }
-
-    if (origen_principal === destino_final) {
-      return res.status(400).json({
-        mensaje: 'El origen y el destino final no pueden ser el mismo',
-      });
-    }
-
-    if (new Date(fecha_fin) < new Date(fecha_inicio)) {
-      return res.status(400).json({
-        mensaje: 'La fecha final no puede ser anterior a la fecha de inicio',
+        mensaje: errorContenido,
       });
     }
 
@@ -164,6 +183,24 @@ const actualizarItinerario = async (req, res) => {
         delete datosActualizar[campo];
       }
     });
+
+    // Se validan los valores resultantes (los enviados o los actuales),
+    // para que una actualización parcial no rompa las reglas del alta.
+    const errorContenido = await validarContenido({
+      id_pasajero: datosActualizar.id_pasajero ?? itinerario.id_pasajero,
+      origen_principal:
+        datosActualizar.origen_principal ?? itinerario.origen_principal,
+      destino_final:
+        datosActualizar.destino_final ?? itinerario.destino_final,
+      fecha_inicio: datosActualizar.fecha_inicio ?? itinerario.fecha_inicio,
+      fecha_fin: datosActualizar.fecha_fin ?? itinerario.fecha_fin,
+    });
+
+    if (errorContenido) {
+      return res.status(400).json({
+        mensaje: errorContenido,
+      });
+    }
 
     await itinerario.update(datosActualizar);
 
