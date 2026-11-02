@@ -3,7 +3,7 @@
 Interfaz web del Sistema de Gestión de Vuelos del Aeropuerto Internacional de la
 Ciudad de México. Consume la API REST y el canal Socket.IO del backend.
 
-**Versión:** `1.6.1`
+**Versión:** `1.6.2`
 
 ## Vistas
 
