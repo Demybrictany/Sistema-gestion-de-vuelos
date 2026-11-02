@@ -3,7 +3,7 @@
 Interfaz web del Sistema de Gestión de Vuelos del Aeropuerto Internacional de la
 Ciudad de México. Consume la API REST y el canal Socket.IO del backend.
 
-**Versión:** `1.6.0`
+**Versión:** `1.4.0`
 
 ## Vistas
 
@@ -13,15 +13,10 @@ Ciudad de México. Consume la API REST y el canal Socket.IO del backend.
 | Panel | KPIs del aeropuerto, mapa de 25 puertas por zona, avisos recientes, vuelos y bandas de equipaje. |
 | Vuelos | Tabla completa con búsqueda por código, ciudad o puerta y filtro por estado. |
 | Reportes | Catálogo de 16 reportes, filtros dinámicos, totales y descarga en Excel/PDF. |
-| Asistente | Chat con el agente de IA + RAG: preguntas sobre vuelos, puertas, equipaje y políticas, con fuentes citadas. |
 
 El tablero se actualiza sin recargar: el backend emite `panel:actualizar` por
 Socket.IO y el cliente vuelve a consultar `GET /api/panel`. Si el socket se cae,
 hay un refresco de respaldo cada 30 segundos.
-
-La vista **Asistente** consume `POST /api/agente/consultas` y muestra la respuesta
-con las fuentes citadas. El backend funciona en modo local (RAG + herramientas)
-sin API key, o con Claude si se configura `ANTHROPIC_API_KEY`.
 
 ## Requisitos
 
@@ -101,7 +96,6 @@ frontend/
 │       ├── BeltsPanel.jsx
 │       ├── NotificationsFeed.jsx
 │       ├── Reports.jsx
-│       ├── AgentChat.jsx    # Chat del agente de IA + RAG
 │       └── StatusBadge.jsx
 └── .env.example
 ```

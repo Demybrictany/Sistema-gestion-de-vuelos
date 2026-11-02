@@ -262,14 +262,4 @@ FROM generate_series(
   interval '1 day'
 ) AS d;
 
--- ------------------------------------------------------------
--- bi_interacciones_agente (v1.6.0)
--- ------------------------------------------------------------
-CREATE OR REPLACE VIEW bi_interacciones_agente AS
-SELECT i.id_interaccion, i.id_usuario, u.nombre_usuario, u.id_rol,
-       i.pregunta, i.estado, i.proveedor, i.modelo,
-       i.tokens_prompt, i.tokens_respuesta, i.latencia_ms, i.created_at
-FROM interacciones_agente i
-LEFT JOIN usuarios u ON u.id_usuario = i.id_usuario;
-
 COMMIT;

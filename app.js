@@ -38,7 +38,6 @@ const historialEquipajeRoutes = require('./routes/historial_equipaje.routes');
 const auditoriaRoutes = require('./routes/auditoria.routes');
 const reportesRoutes = require('./routes/reportes.routes');
 const panelRoutes = require('./routes/panel.routes');
-const agenteRoutes = require('./routes/agente.routes');
 
 const app = express();
 
@@ -114,10 +113,6 @@ app.use('/api/historial-equipaje', staff, historialEquipajeRoutes);
 app.use('/api/auditoria', soloAdmin, auditoriaRoutes);
 app.use('/api/reportes', staff, reportesRoutes);
 app.use('/api/panel', staff, panelRoutes);
-
-// El agente atiende a todos los roles; el servicio limita los datos
-// que cada usuario puede consultar.
-app.use('/api/agente', agenteRoutes);
 
 // ==============================
 // 404 Y MANEJO CENTRAL DE ERRORES
