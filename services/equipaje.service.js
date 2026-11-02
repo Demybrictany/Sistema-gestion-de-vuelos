@@ -99,6 +99,12 @@ const registrarTramo = async ({ idEquipaje, datos, contexto }) => {
       );
     }
 
+    // Un equipaje ya EN_TRANSITO puede sumar otro tramo (conexión). En
+    // cualquier otro estado se respeta la máquina de estados.
+    if (equipaje.estado !== 'EN_TRANSITO') {
+      validarTransicionEquipaje(equipaje.estado, 'EN_TRANSITO');
+    }
+
     // PostgreSQL no permite FOR UPDATE sobre el lado nullable de un JOIN,
     // por eso se bloquea el vuelo sin includes y luego se recarga con ellos.
     const vueloBloqueado = await Vuelo.findByPk(datos.id_vuelo, {

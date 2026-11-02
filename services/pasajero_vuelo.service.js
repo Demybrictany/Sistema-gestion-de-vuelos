@@ -33,6 +33,52 @@ const ESTADOS_VUELO_ABIERTOS = [
 // Una reserva cancelada libera su lugar en el vuelo.
 const ESTADO_QUE_LIBERA_CUPO = 'CANCELADO';
 
+const normalizarAsiento = (valor) => {
+  if (valor === undefined) {
+    return undefined;
+  }
+
+  if (valor === null) {
+    return null;
+  }
+
+  const texto = String(valor).trim().toUpperCase();
+
+  return texto || null;
+};
+
+// Un asiento solo puede pertenecer a una reserva activa del mismo vuelo.
+// El llamador debe haber bloqueado el vuelo para serializar la comprobación.
+const validarAsientoDisponible = async ({
+  idVuelo,
+  numeroAsiento,
+  idPasajeroVueloExcluir = null,
+  transaction,
+}) => {
+  if (!numeroAsiento) {
+    return;
+  }
+
+  const where = {
+    id_vuelo: idVuelo,
+    numero_asiento: numeroAsiento,
+    estado: { [Op.ne]: ESTADO_QUE_LIBERA_CUPO },
+  };
+
+  if (idPasajeroVueloExcluir) {
+    where.id_pasajero_vuelo = { [Op.ne]: idPasajeroVueloExcluir };
+  }
+
+  const ocupado = await PasajeroVuelo.findOne({ where, transaction });
+
+  if (ocupado) {
+    throw new ErrorConEstado(
+      409,
+      `El asiento ${numeroAsiento} ya está ocupado en este vuelo`
+    );
+  }
+};
+
 const obtenerAsignacion = (idAsignacion, transaction) =>
   PasajeroVuelo.findByPk(idAsignacion, {
     include: INCLUDE_ASIGNACION,
@@ -166,9 +212,16 @@ const asignarPasajero = async ({ datos, contexto }) => {
     }
 
     const estado = datos.estado || 'RESERVADO';
+    const numeroAsiento = normalizarAsiento(datos.numero_asiento);
 
     if (estado !== ESTADO_QUE_LIBERA_CUPO) {
       await validarCupo({ vuelo, transaction });
+
+      await validarAsientoDisponible({
+        idVuelo: vuelo.id_vuelo,
+        numeroAsiento,
+        transaction,
+      });
     }
 
     const registro = await PasajeroVuelo.create(
@@ -176,7 +229,7 @@ const asignarPasajero = async ({ datos, contexto }) => {
         id_pasajero: pasajero.id_pasajero,
         id_vuelo: vuelo.id_vuelo,
         id_itinerario: datos.id_itinerario ?? null,
-        numero_asiento: datos.numero_asiento ?? null,
+        numero_asiento: numeroAsiento ?? null,
         estado,
         registrado_por: contexto.idUsuario ?? null,
       },
@@ -234,6 +287,35 @@ const actualizarAsignacion = async ({ idAsignacion, datos, contexto }) => {
       await validarCupo({ vuelo: vueloReactivado, transaction });
     }
 
+    const numeroAsiento =
+      datos.numero_asiento !== undefined
+        ? normalizarAsiento(datos.numero_asiento)
+        : registro.numero_asiento;
+    const cambiaAsiento =
+      datos.numero_asiento !== undefined &&
+      numeroAsiento !== registro.numero_asiento;
+
+    if (
+      !seReactiva &&
+      cambiaAsiento &&
+      estadoNuevo !== ESTADO_QUE_LIBERA_CUPO
+    ) {
+      // Bloquear el vuelo serializa los cambios de asiento concurrentes.
+      await bloquearVuelo(registro.id_vuelo, transaction);
+    }
+
+    if (
+      estadoNuevo !== ESTADO_QUE_LIBERA_CUPO &&
+      (seReactiva || cambiaAsiento)
+    ) {
+      await validarAsientoDisponible({
+        idVuelo: registro.id_vuelo,
+        numeroAsiento,
+        idPasajeroVueloExcluir: registro.id_pasajero_vuelo,
+        transaction,
+      });
+    }
+
     const datosActualizar = {};
 
     // `registrado_por` nunca se toma del cliente: se deriva del token.
@@ -241,6 +323,10 @@ const actualizarAsignacion = async ({ idAsignacion, datos, contexto }) => {
       if (datos[campo] !== undefined) {
         datosActualizar[campo] = datos[campo];
       }
+    }
+
+    if (datos.numero_asiento !== undefined) {
+      datosActualizar.numero_asiento = numeroAsiento;
     }
 
     if (datos.estado !== undefined && datos.estado !== registro.estado) {

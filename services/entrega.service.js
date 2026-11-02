@@ -1,3 +1,6 @@
+const { QueryTypes } = require('sequelize');
+
+const sequelize = require('../db/database');
 const Notificacion = require('../models/notificacion.model');
 const Pasajero = require('../models/pasajero.model');
 const EntregaNotificacion = require('../models/entrega_notificacion.model');
@@ -39,7 +42,7 @@ const obtenerEntrega = async (idNotificacion) => {
       where: { id_notificacion: idNotificacion, canal: 'CORREO' },
       defaults: {
         estado: 'PENDIENTE',
-        intento: 1,
+        intento: 0,
       },
     });
 
@@ -54,6 +57,25 @@ const obtenerEntrega = async (idNotificacion) => {
 
     throw error;
   }
+};
+
+// Reclama la entrega de forma atómica antes de enviar el correo. Si dos
+// mensajes del mismo aviso llegan a la vez, solo uno actualiza la fila;
+// el otro se descarta como duplicado. Así no se envía dos veces.
+const reclamarEntrega = async (idEntrega) => {
+  const [reclamo] = await sequelize.query(
+    `UPDATE entregas_notificacion
+        SET intento = intento + 1
+      WHERE id_entrega = :idEntrega
+        AND estado NOT IN ('ENVIADA', 'SIMULADA')
+      RETURNING intento`,
+    {
+      replacements: { idEntrega },
+      type: QueryTypes.SELECT,
+    }
+  );
+
+  return reclamo || null;
 };
 
 const procesarNotificacion = async ({ id_notificacion }) => {
@@ -76,6 +98,18 @@ const procesarNotificacion = async ({ id_notificacion }) => {
     return { estado: entrega.estado, duplicada: true };
   }
 
+  const reclamo = await reclamarEntrega(entrega.id_entrega);
+
+  if (!reclamo) {
+    // Otro worker ganó el reclamo y está enviando este mismo aviso.
+    const actual = await EntregaNotificacion.findByPk(entrega.id_entrega);
+
+    return {
+      estado: actual?.estado || 'PENDIENTE',
+      duplicada: true,
+    };
+  }
+
   try {
     const resultado = await enviarCorreo({
       para: destinatario,
@@ -86,7 +120,7 @@ const procesarNotificacion = async ({ id_notificacion }) => {
     await entrega.update({
       destinatario,
       estado: resultado.estado,
-      intento: (entrega.intento || 0) + 1,
+      intento: reclamo.intento,
       detalle: resultado.detalle,
       fecha_entrega: new Date(),
     });
@@ -109,7 +143,7 @@ const procesarNotificacion = async ({ id_notificacion }) => {
     await entrega.update({
       destinatario,
       estado: 'FALLIDA',
-      intento: (entrega.intento || 0) + 1,
+      intento: reclamo.intento,
       detalle: error.message,
       fecha_entrega: new Date(),
     });

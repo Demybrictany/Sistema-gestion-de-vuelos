@@ -159,12 +159,18 @@ const crearEscala = async ({ datos }) =>
       throw new ErrorConEstado(400, 'El vuelo no existe');
     }
 
+    // Una escala puede llegar y salir del mismo aeropuerto (conexión en la
+    // misma terminal). Se valida cada ID por separado en lugar de exigir dos
+    // filas distintas.
+    const idsAeropuertos = [
+      ...new Set([aeropuerto_llegada, aeropuerto_salida]),
+    ];
     const aeropuertos = await Aeropuerto.findAll({
-      where: { id_aeropuerto: [aeropuerto_llegada, aeropuerto_salida] },
+      where: { id_aeropuerto: idsAeropuertos },
       transaction,
     });
 
-    if (aeropuertos.length < 2) {
+    if (aeropuertos.length < idsAeropuertos.length) {
       throw new ErrorConEstado(
         400,
         'El aeropuerto de llegada o salida no existe'
@@ -246,16 +252,20 @@ const actualizarEscala = async ({ id, datos }) =>
     validarHoras(horaLlegada, horaSalida);
 
     if (cambios.aeropuerto_llegada || cambios.aeropuerto_salida) {
+      // Igual que en el alta: llegada y salida pueden ser el mismo
+      // aeropuerto, así que se cuentan los IDs únicos.
       const ids = [
-        cambios.aeropuerto_llegada ?? escala.aeropuerto_llegada,
-        cambios.aeropuerto_salida ?? escala.aeropuerto_salida,
+        ...new Set([
+          cambios.aeropuerto_llegada ?? escala.aeropuerto_llegada,
+          cambios.aeropuerto_salida ?? escala.aeropuerto_salida,
+        ]),
       ];
       const aeropuertos = await Aeropuerto.findAll({
         where: { id_aeropuerto: ids },
         transaction,
       });
 
-      if (aeropuertos.length < 2) {
+      if (aeropuertos.length < ids.length) {
         throw new ErrorConEstado(
           400,
           'El aeropuerto de llegada o salida no existe'
