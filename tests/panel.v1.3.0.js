@@ -97,7 +97,10 @@ const KPIS_ESPERADOS = [
     process.env.ADMIN_USUARIO || 'admin',
     process.env.ADMIN_PASSWORD || 'Admin123!'
   );
-  const carlos = await login('carlos', 'Pasajero123!');
+  const carlos = await login(
+    process.env.PASAJERO_USUARIO || 'carlos',
+    process.env.PASAJERO_PASSWORD || 'Pasajero123!'
+  );
 
   let r = await req('GET', '/api/panel');
   check('El panel exige autenticación', r.status === 401, `(${r.status})`);

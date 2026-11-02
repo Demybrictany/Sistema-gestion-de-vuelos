@@ -10,6 +10,7 @@ import KpiGrid from './components/KpiGrid';
 import Login from './components/Login';
 import NotificationsFeed from './components/NotificationsFeed';
 import Reports from './components/Reports';
+import AgentChat from './components/AgentChat';
 
 const ROLES_PERMITIDOS = ['ADMINISTRADOR', 'SECRETARIO'];
 
@@ -94,6 +95,14 @@ function Encabezado({ usuario, vista, onVista, socketEstado, actualizadoEn, onSa
           aria-current={vista === 'reportes' ? 'page' : undefined}
         >
           Reportes
+        </button>
+        <button
+          type="button"
+          className={vista === 'asistente' ? 'activo' : ''}
+          onClick={() => onVista('asistente')}
+          aria-current={vista === 'asistente' ? 'page' : undefined}
+        >
+          Asistente
         </button>
       </nav>
 
@@ -221,7 +230,9 @@ function Workspace({ token, usuario, onSalir }) {
 
         {vista === 'reportes' ? <Reports token={token} /> : null}
 
-        {vista !== 'reportes' && !panel && cargando ? (
+        {vista === 'asistente' ? <AgentChat token={token} /> : null}
+
+        {vista !== 'reportes' && vista !== 'asistente' && !panel && cargando ? (
           <div className="esqueleto" role="status" aria-live="polite">
             <div className="esqueleto__linea esqueleto__linea--corta" />
             <div className="esqueleto__bloque" />

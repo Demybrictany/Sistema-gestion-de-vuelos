@@ -6,8 +6,10 @@ const Pasajero = require('../models/pasajero.model');
 const Vuelo = require('../models/vuelo.model');
 const Itinerario = require('../models/itinerario.model');
 const Usuario = require('../models/usuario.model');
+const Puerta = require('../models/puerta.model');
 
 const { ErrorConEstado } = require('../lib/errores');
+const { crearNotificacionPasajero } = require('./notificacion.service');
 
 const INCLUDE_ASIGNACION = [
   { model: Pasajero, as: 'pasajero' },
@@ -72,6 +74,28 @@ const validarCupo = async ({ vuelo, transaction }) => {
       'El vuelo alcanzó su capacidad máxima de pasajeros'
     );
   }
+};
+
+// Aviso inicial de la reserva: código, fecha, hora y puerta si ya existe.
+const notificarAsignacion = async ({ idPasajero, vuelo, transaction }) => {
+  const puerta = vuelo.id_puerta
+    ? await Puerta.findByPk(vuelo.id_puerta, { transaction })
+    : null;
+
+  const fecha = String(vuelo.fecha_salida).slice(0, 10);
+  const hora = String(vuelo.hora_salida).slice(0, 5);
+  const detallePuerta = puerta ? ` por la puerta ${puerta.numero}` : '';
+
+  await crearNotificacionPasajero({
+    idPasajero,
+    idVuelo: vuelo.id_vuelo,
+    tipo: puerta ? 'PUERTA_ASIGNADA' : 'INFORMACION_GENERAL',
+    titulo: puerta ? 'Puerta y hora de tu vuelo' : 'Hora de tu vuelo',
+    mensaje:
+      `Tu vuelo ${vuelo.codigo_vuelo} sale el ${fecha} a las ${hora}` +
+      `${detallePuerta}.`,
+    transaction,
+  });
 };
 
 const validarItinerario = async ({ idItinerario, idPasajero, transaction }) => {
@@ -159,6 +183,14 @@ const asignarPasajero = async ({ datos, contexto }) => {
       { transaction }
     );
 
+    if (estado !== ESTADO_QUE_LIBERA_CUPO) {
+      await notificarAsignacion({
+        idPasajero: pasajero.id_pasajero,
+        vuelo,
+        transaction,
+      });
+    }
+
     return obtenerAsignacion(registro.id_pasajero_vuelo, transaction);
   });
 };
@@ -187,17 +219,19 @@ const actualizarAsignacion = async ({ idAsignacion, datos, contexto }) => {
       registro.estado === ESTADO_QUE_LIBERA_CUPO &&
       estadoNuevo !== ESTADO_QUE_LIBERA_CUPO;
 
-    if (seReactiva) {
-      const vuelo = await bloquearVuelo(registro.id_vuelo, transaction);
+    let vueloReactivado = null;
 
-      if (!ESTADOS_VUELO_ABIERTOS.includes(vuelo.estado)) {
+    if (seReactiva) {
+      vueloReactivado = await bloquearVuelo(registro.id_vuelo, transaction);
+
+      if (!ESTADOS_VUELO_ABIERTOS.includes(vueloReactivado.estado)) {
         throw new ErrorConEstado(
           400,
-          `No se puede reactivar la reserva de un vuelo en estado ${vuelo.estado}`
+          `No se puede reactivar la reserva de un vuelo en estado ${vueloReactivado.estado}`
         );
       }
 
-      await validarCupo({ vuelo, transaction });
+      await validarCupo({ vuelo: vueloReactivado, transaction });
     }
 
     const datosActualizar = {};
@@ -214,6 +248,14 @@ const actualizarAsignacion = async ({ idAsignacion, datos, contexto }) => {
     }
 
     await registro.update(datosActualizar, { transaction });
+
+    if (seReactiva && vueloReactivado) {
+      await notificarAsignacion({
+        idPasajero: registro.id_pasajero,
+        vuelo: vueloReactivado,
+        transaction,
+      });
+    }
 
     return obtenerAsignacion(idAsignacion, transaction);
   });

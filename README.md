@@ -2,8 +2,9 @@
 
 Sistema para la gestión de **vuelos, pasajeros y equipaje** del Aeropuerto Internacional de la Ciudad de México (AICM). Administra puertas de embarque, bandas de equipaje, itinerarios, escalas, notificaciones, historial y auditoría.
 
-**Versión:** `v1.5.0`
+**Versión:** `v1.6.1`
 **Repositorio:** https://github.com/Demybrictany/Sistema-gestion-de-vuelos
+**Producción:** [frontend](https://sistema-gestion-de-vuelos.vercel.app) · [API](https://sistema-vuelos-api.onrender.com/health)
 **Equipo:** Juanjo, Demy
 
 ---
@@ -19,7 +20,41 @@ El sistema modela la operación del aeropuerto:
 - Cada operación relevante queda registrada en el historial y en la auditoría.
 - El catálogo incluye **25 puertas de embarque**, 10 bandas, 6 aeropuertos y datos de ejemplo.
 
-Incluye **16 reportes de negocio** con filtros y agregaciones, exportables a Excel y PDF, **vistas de solo lectura para Power BI**, un **panel operativo en tiempo real** expuesto por API REST y Socket.IO, un **frontend web** con inicio de sesión, mapa de puertas, vuelos y reportería, y **mensajería asíncrona con RabbitMQ** para entregar las notificaciones por correo mediante un worker. El agente de IA + RAG se desarrollará en la v1.6.0 (ver [Hoja de ruta](#hoja-de-ruta)).
+Incluye **16 reportes de negocio** con filtros y agregaciones, exportables a Excel y PDF, **vistas de solo lectura para Power BI**, un **panel operativo en tiempo real** expuesto por API REST y Socket.IO, un **frontend web** con inicio de sesión, mapa de puertas, vuelos y reportería, y **mensajería asíncrona con RabbitMQ** para entregar las notificaciones por correo mediante un worker. Incluye un **agente de IA con RAG** que consulta datos operativos y la documentación del negocio, responde con **citas de fuentes** y registra cada interacción para auditoría (ver [`docs/AGENTE_IA.md`](docs/AGENTE_IA.md)).
+
+---
+
+## Novedades de la v1.6.1
+
+- **Aviso inicial de reserva:** al asignar un pasajero a un vuelo se envía una notificación con código, fecha, hora y puerta (si ya existe).
+- **Aviso de puerta de escala:** al crear o cambiar la puerta de salida de una escala se notifica al pasajero del itinerario con la nueva puerta y la hora de la conexión.
+- **Servicio de escalas:** la lógica sale del controlador; valida itinerario, vuelo, aeropuertos, horarios y puertas operativas dentro de una transacción.
+- **Corrección del RAG:** el troceado ahora reconoce finales de línea CRLF y vuelve a generar 13 fragmentos; la ingesta reindexa si cambia el número de fragmentos.
+- **Pruebas:** `npm run test:escalas` verifica ambos avisos y la validación de puertas.
+
+---
+
+## Novedades de la v1.6.0
+
+- **Agente de IA:** `POST /api/agente/consultas` responde en español con datos reales del sistema (vuelos, puertas, equipaje, escalas) y con la documentación del negocio.
+- **RAG con citas:** ingesta de `docs/rag/`, fragmentación, búsqueda de texto completo en español y soporte opcional de pgvector con Voyage AI. Cada respuesta devuelve las fuentes citadas.
+- **Herramientas con alcance por rol:** un pasajero solo puede consultar sus propios vuelos, escalas y equipaje; el personal ve la operación.
+- **Dos proveedores:** modo local sin API key (RAG + herramientas) y Claude con tool use (`ANTHROPIC_API_KEY`).
+- **Logs y auditoría del agente:** tabla `interacciones_agente`, acción `CONSULTA_AGENTE` en `auditoria` y vista `bi_interacciones_agente`.
+- **Frontend:** nueva pestaña **Asistente** con chat, sugerencias y fuentes citadas.
+- **Pruebas:** `npm run test:agente`.
+- **Guía:** [`docs/AGENTE_IA.md`](docs/AGENTE_IA.md).
+
+---
+
+## Novedades de la v1.5.1
+
+- **Despliegue en producción:** frontend en Vercel y API + worker en Render (plan gratuito), con Neon, CloudAMQP y SMTP.
+- **Entorno local con Docker:** PostgreSQL 16 con pgvector en el puerto 5433 y RabbitMQ 3.13 con panel de administración; `docker compose up -d`.
+- **Supervisor de producción:** `npm run start:prod` ejecuta API y worker en un solo servicio web, reinicia el worker si se cae y detiene todo si la API termina.
+- **Seed relativo:** al ejecutar `db:init` las fechas se desplazan para que siempre haya vuelos de hoy, pasados y futuros.
+- **Contraseñas:** script `npm run db:password` y credenciales de prueba configurables por entorno (`ADMIN_PASSWORD`, `SECRETARIO_PASSWORD`, `PASAJERO_PASSWORD`).
+- **Guía completa:** [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md).
 
 ---
 
@@ -115,6 +150,7 @@ Incluye **16 reportes de negocio** con filtros y agregaciones, exportables a Exc
 | Business Intelligence | PostgreSQL views + Power BI |
 | Tiempo real | Socket.IO 4 (panel operativo) |
 | Mensajería asíncrona | RabbitMQ + `amqplib` + worker |
+| Agente de IA | Claude API (SDK oficial) + RAG con pgvector |
 | Correo | Nodemailer (SMTP) o modo simulado |
 
 ---
@@ -195,6 +231,7 @@ Incluye **16 reportes de negocio** con filtros y agregaciones, exportables a Exc
 
 - Node.js **18 o superior**
 - PostgreSQL **14 o superior** (local o Neon)
+- Extensión **pgvector** (incluida en la imagen Docker y disponible en Neon)
 - npm
 
 ---
@@ -273,6 +310,20 @@ Puertas: 25 | Vuelos: 12 | Pasajeros: 6 | Equipajes: 8 | Notificaciones: 12
 > npm run db:views
 > ```
 
+Después indexa la documentación del agente:
+
+```bash
+npm run rag:ingestar
+```
+
+En una base ya existente, aplica primero la migración del agente:
+
+```bash
+npm run db:migrate:agente
+npm run rag:ingestar
+npm run db:views
+```
+
 ### 4. Ejecutar el servidor
 
 ```bash
@@ -341,6 +392,10 @@ El script crea y modifica datos; usa una base de pruebas o vuelve a ejecutar `np
 | `RABBITMQ_MAX_REINTENTOS` | No | Reintentos antes de enviar a fallidos (por defecto `3`). |
 | `RABBITMQ_TTL_REINTENTO_MS` | No | Espera entre reintentos en ms (por defecto `5000`). |
 | `RABBITMQ_PREFETCH` | No | Mensajes en vuelo por worker (por defecto `10`). |
+| `AGENTE_PROVEEDOR` | No | `local` (RAG + herramientas) o `claude` (API de Claude). Por defecto local si no hay API key. |
+| `ANTHROPIC_API_KEY` | No | Habilita el proveedor Claude. |
+| `AGENTE_MODELO` | No | Modelo de Claude (por defecto `claude-opus-5-5`). |
+| `VOYAGE_API_KEY` | No | Embeddings opcionales de 1024 dimensiones para pgvector. |
 | `CORREO_MODO` | No | `simulado` (por defecto) o `smtp`. |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE` | No | Servidor SMTP para `CORREO_MODO=smtp`. |
 | `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | No | Credenciales y remitente del correo. |
@@ -375,6 +430,8 @@ node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 | `historial_vuelo` | 6 |
 | `historial_equipaje` | 16 |
 | `auditoria` | 7 |
+
+Las fechas del seed son **relativas**: al ejecutarlo se desplazan los días necesarios para que el 2 de octubre de 2026 (el “hoy” original del archivo) sea la fecha real de ejecución. Así la demo siempre muestra vuelos del día, pasados y futuros.
 
 ### Reglas a nivel de base de datos
 
@@ -565,6 +622,10 @@ Cada recurso expone `GET /`, `GET /:id`, `POST /`, `PUT /:id` y, cuando aplica, 
 | `GET` | `/api/historial-vuelo/vuelo/:idVuelo` | ADMIN, SECRETARIO | Historial de un vuelo. |
 | `GET` | `/api/historial-equipaje/equipaje/:idEquipaje` | ADMIN, SECRETARIO | Historial de un equipaje. |
 | `GET` | `/api/panel` | ADMIN, SECRETARIO | Panel operativo: KPIs, puertas, bandas, vuelos y notificaciones. |
+| `POST` | `/api/agente/consultas` | Todos | Pregunta al agente de IA + RAG. Cuerpo: `{ "pregunta": "..." }`. |
+| `GET` | `/api/agente/interacciones` | ADMIN | Logs de las consultas al agente. |
+| `GET` | `/api/agente/documentos` | ADMIN | Documentos indexados para el RAG. |
+| `POST` | `/api/agente/ingestar` | ADMIN | Reindexa `docs/rag/` (idempotente). |
 
 ### Panel operativo en tiempo real
 
@@ -600,6 +661,19 @@ socket.on('panel:actualizar', async () => {
 ```
 
 Solo `ADMINISTRADOR` y `SECRETARIO` pueden conectarse. Cada cambio en vuelos, puertas, bandas, equipajes, reservas o notificaciones emite `panel:actualizar`; el cliente vuelve a consultar `GET /api/panel`.
+
+### Agente de IA + RAG
+
+```bash
+curl -X POST http://localhost:3000/api/agente/consultas \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"pregunta":"¿Qué pasa si mi vuelo se retrasa?"}'
+```
+
+La respuesta incluye `respuesta`, `fuentes` citadas, `modelo`, `proveedor`,
+`latencia_ms` e `id_interaccion`. La guía completa, las herramientas y los
+proveedores están en [`docs/AGENTE_IA.md`](docs/AGENTE_IA.md).
 
 ### Ejemplos
 
@@ -720,9 +794,25 @@ La guía completa de conexión, usuario de solo lectura, relaciones y tableros s
 
 ---
 
+## Despliegue en producción
+
+| Componente | Servicio | URL / notas |
+|---|---|---|
+| Frontend | Vercel (Hobby) | <https://sistema-gestion-de-vuelos.vercel.app> |
+| API + worker | Render (Web Service free) | <https://sistema-vuelos-api.onrender.com> |
+| Base de datos | Neon PostgreSQL | Conexión *pooled* con `sslmode=require`. |
+| Mensajería | CloudAMQP (Little Lemur) | AMQP URL `amqps://...`. |
+| Correo | Ethereal (SMTP de pruebas) | `CORREO_MODO=smtp`; los mensajes se leen en ethereal.email. |
+
+- Salud: `GET https://sistema-vuelos-api.onrender.com/health`.
+- El plan gratuito de Render no incluye *Background Workers*: `npm run start:prod` ejecuta la API y el worker en el mismo servicio y duerme tras ~15 minutos sin tráfico.
+- La guía paso a paso está en [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md).
+
+---
+
 ## Usuarios de prueba
 
-Datos sembrados **solo para desarrollo**. Cámbialos antes de desplegar.
+Datos sembrados **solo para desarrollo**. En producción las contraseñas de `admin` y `secretario` están rotadas; esta tabla aplica únicamente al seed local.
 
 | Usuario | Contraseña | Rol | Pasajero vinculado |
 |---|---|---|---|
@@ -740,17 +830,23 @@ Datos sembrados **solo para desarrollo**. Cámbialos antes de desplegar.
 | Script | Descripción |
 |---|---|
 | `npm start` | Inicia el servidor. |
+| `npm run start:prod` | Supervisor de producción: API + worker en un solo proceso (Render). |
 | `npm run dev` | Inicia con recarga automática (nodemon). |
 | `npm run worker` | Inicia el worker de notificaciones (requiere `RABBITMQ_URL`). |
 | `npm run dev:worker` | Inicia el worker con recarga automática. |
 | `npm run db:init` | Crea el esquema, carga los datos iniciales y crea las vistas de BI. |
 | `npm run db:views` | Recrea solo las vistas de Power BI (no borra datos). |
 | `npm run db:migrate` | Aplica la migración incremental de v1.5.0 (tabla de entregas). |
-| `npm test` | Ejecuta las pruebas de API, reportería y panel. |
+| `npm run db:migrate:agente` | Aplica la migración de v1.6.0 (RAG y agente). |
+| `npm run rag:ingestar` | Indexa la documentación de `docs/rag/`. |
+| `npm run db:password -- <usuario> <clave>` | Cambia la contraseña de un usuario en la base configurada. |
+| `npm test` | Ejecuta las pruebas de API, reportería, panel, agente y escalas. |
 | `npm run test:api` | Pruebas de integración de la API. |
 | `npm run test:reportes` | Pruebas del catálogo, filtros y exportaciones. |
 | `npm run test:panel` | Pruebas del panel operativo y del handshake de Socket.IO. |
 | `npm run test:rabbitmq` | Pruebas del flujo API → cola → worker → entrega (requiere broker). |
+| `npm run test:agente` | Pruebas del agente, RAG, citas, permisos y logs. |
+| `npm run test:escalas` | Pruebas de avisos de reserva y de puerta de escala. |
 
 ---
 
@@ -758,7 +854,7 @@ Datos sembrados **solo para desarrollo**. Cámbialos antes de desplegar.
 
 - `main`: versión estable.
 - `juanjo`, `Demy`: ramas de desarrollo.
-- `feature/v1.5.0-rabbitmq`: rama de esta versión.
+- `feature/v1.6.0-agente-ia`: rama de esta versión.
 - Cada módulo se integra mediante **Pull Request**.
 - Versionado semántico (`MAJOR.MINOR.PATCH`).
 
@@ -771,6 +867,9 @@ Datos sembrados **solo para desarrollo**. Cámbialos antes de desplegar.
 | `v1.3.0` | Panel operativo por API REST y Socket.IO, CORS configurable y pruebas del panel. |
 | `v1.4.0` | Frontend React + Vite: login, panel en vivo, mapa de puertas, vuelos y reportería. |
 | `v1.5.0` | Mensajería asíncrona con RabbitMQ, worker de entrega, traza de entregas y vista BI. |
+| `v1.5.1` | Despliegue en producción, entorno Docker, supervisor API+worker, seed relativo y cambio de contraseñas. |
+| `v1.6.0` | Agente de IA + RAG con citas, herramientas por rol, logs del agente, pgvector opcional y chat en el frontend. |
+| `v1.6.1` | Aviso inicial de reserva, aviso de puerta de escala, servicio de escalas y corrección del troceado RAG. |
 
 ### Convención de commits
 
@@ -785,14 +884,17 @@ chore: tareas de mantenimiento
 
 ---
 
-## Limitaciones conocidas de v1.5.0
+## Limitaciones conocidas de v1.6.1
 
 - El frontend es de consulta y reportería: el alta y edición de vuelos, pasajeros y equipajes se hacen por la API.
 - La entrega de correo es simulada por defecto (`CORREO_MODO=simulado`); para enviar correo real hay que configurar SMTP.
 - El publicador no usa el patrón *outbox*: si RabbitMQ está caído en el instante de la creación, el evento no se encola (la notificación sí queda en la base).
 - Solo se implementa el canal `CORREO`; `PUSH` y `SMS` están modelados pero no tienen proveedor.
-- Sin agente de IA ni RAG.
-- Sin despliegue del backend en la nube (la base ya puede estar en Neon).
+- El agente usa por defecto el modo local (RAG + herramientas); para respuestas generativas con Claude hace falta `ANTHROPIC_API_KEY`.
+- Sin `VOYAGE_API_KEY` el RAG usa búsqueda de texto completo en español, no vectores.
+- El agente es de consulta: no crea ni modifica datos.
+- El servicio gratuito de Render se duerme tras ~15 minutos sin tráfico; la primera petición puede tardar y el worker se pausa hasta despertar.
+- El correo se envía por Ethereal (bandeja de pruebas); para entrega real hay que configurar Gmail o Mailtrap.
 - Pruebas de integración únicamente; no hay pruebas unitarias.
 - Sin refresh tokens, bloqueo por intentos fallidos ni rate limiting.
 - El panel no filtra por fecha en el servidor: devuelve los últimos 300 vuelos y el cliente acota la vista.
@@ -809,8 +911,21 @@ chore: tareas de mantenimiento
 | **v1.3.0** | Panel operativo por API REST y Socket.IO, CORS configurable y pruebas del panel. |
 | **v1.4.0** | Frontend React + Vite con panel en vivo, mapa de puertas, vuelos y reportería. |
 | **v1.5.0** | Mensajería asíncrona con RabbitMQ, worker de entrega y traza de entregas. |
-| v1.6.0 | Agente de IA + RAG con Claude y pgvector. |
-| v1.7.0 | Despliegue en producción y manual técnico. |
+| **v1.5.1** | Despliegue en producción, entorno Docker, supervisor API+worker y seed relativo. |
+| **v1.6.0** | Agente de IA + RAG con pgvector, citas de fuentes, herramientas por rol, logs y chat en el frontend. |
+| **v1.6.1** | Avisos de reserva y de puerta de escala, servicio de escalas y corrección del RAG. |
+| v1.7.0 | Tablero `.pbix` de Power BI y cierre del proyecto. |
+
+---
+
+## Documentación
+
+- [Manual técnico](docs/MANUAL_TECNICO.md): arquitectura, modelo, reglas, API, seguridad, mensajería, agente, despliegue y operación.
+- [Guía de despliegue](docs/DESPLIEGUE.md): Render + Vercel + Neon + CloudAMQP + Ethereal.
+- [Guía del agente IA](docs/AGENTE_IA.md): RAG, herramientas, proveedores, logs y pruebas.
+- [Guía de RabbitMQ](docs/RABBITMQ.md) y [guía de Power BI](docs/POWER_BI.md).
+- [Bitácora](docs/BITACORA.md): registro de sesiones, decisiones y verificación.
+- [CLAUDE.md](CLAUDE.md) y [AGENTS.md](AGENTS.md): desarrollo guiado por especificaciones.
 
 ---
 
