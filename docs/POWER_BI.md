@@ -2,6 +2,8 @@
 
 El backend expone un conjunto de **vistas PostgreSQL de solo lectura** (`bi_*`) pensadas para consumo desde Power BI. Las vistas no modifican datos y concentran las relaciones y agregaciones que un tablero necesita.
 
+> Guía paso a paso para construir el tablero: [`POWER_BI_PASO_A_PASO.md`](POWER_BI_PASO_A_PASO.md).
+
 ---
 
 ## 1. Crear las vistas
@@ -120,3 +122,20 @@ Desactiva la dirección de filtro cruzada automática donde no corresponda y mar
 - No publiques la cadena de conexión ni el archivo `.pbix` con credenciales embebidas.
 - En Neon, habilita SSL y restringe el acceso por IP si es posible.
 - Las vistas no exponen `password_hash` ni datos sensibles de autenticación.
+
+---
+
+## 9. Tablero del proyecto
+
+| Elemento | Valor |
+|---|---|
+| Archivo | `docs/powerbi/Sistema-Vuelos-AICM.pbix` |
+| Exportación | `docs/powerbi/Sistema-Vuelos-AICM.pdf` |
+| Páginas | Operación diaria · Puertas y rutas · Equipaje · Notificaciones y agente |
+| Fuente | Las 11 vistas `bi_*` de Neon |
+| Usuario | `bi_lectura` (solo lectura) |
+| Guía | [`POWER_BI_PASO_A_PASO.md`](POWER_BI_PASO_A_PASO.md) |
+
+El tablero se construye con Power BI Desktop. Mientras el `.pbix` no exista, el
+repositorio conserva las vistas, la guía y la carpeta `docs/powerbi/` con la
+lista de entregables.

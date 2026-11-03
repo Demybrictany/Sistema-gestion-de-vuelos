@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1540" height="840" viewBox="0 0 1540 840" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+<defs>
+  <filter id="sombra" x="-10%" y="-10%" width="130%" height="130%">
+    <feDropShadow dx="0" dy="1.5" stdDeviation="2" flood-color="#0f172a" flood-opacity="0.12"/>
+  </filter>
+  <marker id="flecha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M 0 1 L 9 5 L 0 9 z" fill="#64748b"/>
+  </marker>
+</defs>
+<rect width="1540" height="840" fill="#f8fafc"/>
+<text x="40" y="40" font-size="20" font-weight="700" fill="#0f172a">Arquitectura de despliegue — producción en plan gratuito</text>
+<text x="1500" y="40" font-size="12" fill="#64748b" text-anchor="end">Sistema de Gestión de Vuelos AICM · v1.6.1</text>
+<g filter="url(#sombra)">
+<rect x="560" y="80" width="420" height="120" rx="10" fill="#ffffff" stroke="#24292f" stroke-opacity="0.5" stroke-width="1.2"/>
+<path d="M 560 90 Q 560 80 570 80 L 970 80 Q 980 80 980 90 L 980 114 L 560 114 Z" fill="#24292f"/>
+<text x="574" y="102" font-size="13.5" font-weight="700" fill="#ffffff">GitHub — repositorio y fork</text>
+<text x="574" y="138" font-size="10.8" fill="#334155">origin · Demybrictany/Sistema-gestion-de-vuelos</text>
+<text x="574" y="158" font-size="10.8" fill="#334155">fork · jjemd101191/Sistema-gestion-de-vuelos</text>
+<text x="574" y="178" font-size="10.8" fill="#334155">rama main · tags v1.5.1 → v1.6.1</text>
+</g>
+<g filter="url(#sombra)">
+<rect x="60" y="300" width="250" height="130" rx="10" fill="#ffffff" stroke="#334155" stroke-opacity="0.5" stroke-width="1.2"/>
+<path d="M 60 310 Q 60 300 70 300 L 300 300 Q 310 300 310 310 L 310 334 L 60 334 Z" fill="#334155"/>
+<text x="74" y="322" font-size="13.5" font-weight="700" fill="#ffffff">Navegador</text>
+<text x="74" y="358" font-size="10.8" fill="#334155">Panel operativo</text>
+<text x="74" y="378" font-size="10.8" fill="#334155">login JWT · rol admin o secretario</text>
+<text x="74" y="398" font-size="10.8" fill="#334155">25 puertas y KPIs en vivo</text>
+</g>
+<g filter="url(#sombra)">
+<rect x="400" y="270" width="280" height="170" rx="10" fill="#ffffff" stroke="#111827" stroke-opacity="0.5" stroke-width="1.2"/>
+<path d="M 400 280 Q 400 270 410 270 L 670 270 Q 680 270 680 280 L 680 304 L 400 304 Z" fill="#111827"/>
+<text x="414" y="292" font-size="13.5" font-weight="700" fill="#ffffff">Vercel — frontend</text>
+<text x="414" y="328" font-size="10.8" fill="#334155">React 18 + Vite 5 (build estático)</text>
+<text x="414" y="348" font-size="10.8" fill="#334155">sistema-gestion-de-vuelos.vercel.app</text>
+<text x="414" y="368" font-size="10.8" fill="#334155">Root Directory: frontend</text>
+<text x="414" y="388" font-size="10.8" fill="#334155">Output: dist · variable VITE_API_URL</text>
+</g>
+<g filter="url(#sombra)">
+<rect x="800" y="270" width="360" height="230" rx="10" fill="#ffffff" stroke="#4338ca" stroke-opacity="0.5" stroke-width="1.2"/>
+<path d="M 800 280 Q 800 270 810 270 L 1150 270 Q 1160 270 1160 280 L 1160 304 L 800 304 Z" fill="#4338ca"/>
+<text x="814" y="292" font-size="13.5" font-weight="700" fill="#ffffff">Render — API + worker</text>
+<text x="814" y="328" font-size="10.8" fill="#334155">sistema-vuelos-api.onrender.com</text>
+<text x="814" y="348" font-size="10.8" fill="#334155">Express 5 · Socket.IO · JWT</text>
+<text x="814" y="368" font-size="10.8" fill="#334155">worker RabbitMQ supervisado</text>
+<text x="814" y="388" font-size="10.8" fill="#334155">npm run start:prod</text>
+<text x="814" y="408" font-size="10.8" fill="#334155">health check: /health</text>
+<text x="814" y="428" font-size="10.8" fill="#334155">plan free: duerme tras ~15 min</text>
+</g>
+<g filter="url(#sombra)">
+<rect x="800" y="590" width="300" height="150" rx="10" fill="#ffffff" stroke="#047857" stroke-opacity="0.5" stroke-width="1.2"/>
+<path d="M 800 600 Q 800 590 810 590 L 1090 590 Q 1100 590 1100 600 L 1100 624 L 800 624 Z" fill="#047857"/>
+<text x="814" y="612" font-size="13.5" font-weight="700" fill="#ffffff">Neon — PostgreSQL</text>
+<text x="814" y="648" font-size="10.8" fill="#334155">ep-noisy-water-b4ymj35w-pooler…</text>
+<text x="814" y="668" font-size="10.8" fill="#334155">región us-east-2 · SSL obligatorio</text>
+<text x="814" y="688" font-size="10.8" fill="#334155">pooled para la API · directa para DDL</text>
+<text x="814" y="708" font-size="10.8" fill="#334155">20 tablas · extensión pgvector</text>
+</g>
+<g filter="url(#sombra)">
+<rect x="1240" y="330" width="240" height="170" rx="10" fill="#ffffff" stroke="#ea580c" stroke-opacity="0.5" stroke-width="1.2"/>
+<path d="M 1240 340 Q 1240 330 1250 330 L 1470 330 Q 1480 330 1480 340 L 1480 364 L 1240 364 Z" fill="#ea580c"/>
+<text x="1254" y="352" font-size="13.5" font-weight="700" fill="#ffffff">CloudAMQP — RabbitMQ</text>
+<text x="1254" y="388" font-size="10.8" fill="#334155">exchange sistema.vuelos</text>
+<text x="1254" y="408" font-size="10.8" fill="#334155">cola notificaciones.pasajeros</text>
+<text x="1254" y="428" font-size="10.8" fill="#334155">reintentos (TTL) y cola fallidas</text>
+<text x="1254" y="448" font-size="10.8" fill="#334155">plan Little Lemur (free)</text>
+</g>
+<g filter="url(#sombra)">
+<rect x="1240" y="580" width="240" height="150" rx="10" fill="#ffffff" stroke="#0e7490" stroke-opacity="0.5" stroke-width="1.2"/>
+<path d="M 1240 590 Q 1240 580 1250 580 L 1470 580 Q 1480 580 1480 590 L 1480 614 L 1240 614 Z" fill="#0e7490"/>
+<text x="1254" y="602" font-size="13.5" font-weight="700" fill="#ffffff">Ethereal — SMTP</text>
+<text x="1254" y="638" font-size="10.8" fill="#334155">smtp.ethereal.email:587</text>
+<text x="1254" y="658" font-size="10.8" fill="#334155">bandeja de pruebas (no real)</text>
+<text x="1254" y="678" font-size="10.8" fill="#334155">CORREO_MODO=smtp</text>
+</g>
+<g filter="url(#sombra)">
+<rect x="1240" y="100" width="240" height="140" rx="10" fill="#ffffff" stroke="#6d28d9" stroke-opacity="0.5" stroke-width="1.2"/>
+<path d="M 1240 110 Q 1240 100 1250 100 L 1470 100 Q 1480 100 1480 110 L 1480 134 L 1240 134 Z" fill="#6d28d9"/>
+<text x="1254" y="122" font-size="13.5" font-weight="700" fill="#ffffff">APIs opcionales</text>
+<text x="1254" y="158" font-size="10.8" fill="#334155">Anthropic · agente Claude</text>
+<text x="1254" y="178" font-size="10.8" fill="#334155">Voyage AI · embeddings 1024d</text>
+<text x="1254" y="198" font-size="10.8" fill="#334155">sin clave: agente en modo local</text>
+</g>
+<path d="M 620 200 L 620 238 L 540 238 L 540 268" fill="none" stroke="#64748b" stroke-width="1.6" stroke-linejoin="round"  marker-end="url(#flecha)"/>
+<text x="548" y="232" font-size="9.5" fill="#475569" text-anchor="start" paint-order="stroke" stroke="#f8fafc" stroke-width="3.5" stroke-linejoin="round">auto-deploy</text>
+<path d="M 900 200 L 900 268" fill="none" stroke="#64748b" stroke-width="1.6" stroke-linejoin="round"  marker-end="url(#flecha)"/>
+<text x="906" y="238" font-size="9.5" fill="#475569" text-anchor="start" paint-order="stroke" stroke="#f8fafc" stroke-width="3.5" stroke-linejoin="round">auto-deploy</text>
+<path d="M 310 330 L 398 330" fill="none" stroke="#64748b" stroke-width="1.6" stroke-linejoin="round"  marker-end="url(#flecha)"/>
+<text x="330" y="322" font-size="9.5" fill="#475569" text-anchor="start" paint-order="stroke" stroke="#f8fafc" stroke-width="3.5" stroke-linejoin="round">HTTPS</text>
+<path d="M 185 430 L 185 535 L 770 535 L 770 460 L 798 460" fill="none" stroke="#64748b" stroke-width="1.6" stroke-linejoin="round"  marker-end="url(#flecha)"/>
+<text x="470" y="528" font-size="9.5" fill="#475569" text-anchor="start" paint-order="stroke" stroke="#f8fafc" stroke-width="3.5" stroke-linejoin="round">REST + Socket.IO</text>
+<path d="M 680 350 L 798 350" fill="none" stroke="#64748b" stroke-width="1.6" stroke-linejoin="round"  marker-end="url(#flecha)"/>
+<text x="688" y="342" font-size="9.5" fill="#475569" text-anchor="start" paint-order="stroke" stroke="#f8fafc" stroke-width="3.5" stroke-linejoin="round">VITE_API_URL</text>
+<path d="M 950 500 L 950 588" fill="none" stroke="#64748b" stroke-width="1.6" stroke-linejoin="round"  marker-end="url(#flecha)"/>
+<text x="958" y="548" font-size="9.5" fill="#475569" text-anchor="start" paint-order="stroke" stroke="#f8fafc" stroke-width="3.5" stroke-linejoin="round">DATABASE_URL · sslmode=require</text>
+<path d="M 1160 370 L 1238 370" fill="none" stroke="#64748b" stroke-width="1.6" stroke-linejoin="round"  marker-end="url(#flecha)"/>
+<text x="1166" y="362" font-size="9.5" fill="#475569" text-anchor="start" paint-order="stroke" stroke="#f8fafc" stroke-width="3.5" stroke-linejoin="round">publish</text>
+<path d="M 1238 425 L 1162 425" fill="none" stroke="#64748b" stroke-width="1.6" stroke-linejoin="round"  marker-end="url(#flecha)"/>
+<text x="1166" y="440" font-size="9.5" fill="#475569" text-anchor="start" paint-order="stroke" stroke="#f8fafc" stroke-width="3.5" stroke-linejoin="round">consume</text>
+<path d="M 1160 465 L 1200 465 L 1200 650 L 1238 650" fill="none" stroke="#64748b" stroke-width="1.6" stroke-linejoin="round"  marker-end="url(#flecha)"/>
+<text x="1206" y="565" font-size="9.5" fill="#475569" text-anchor="start" transform="rotate(-90 1206 565)" paint-order="stroke" stroke="#f8fafc" stroke-width="3.5" stroke-linejoin="round">SMTP 587</text>
+<path d="M 1160 305 L 1200 305 L 1200 170 L 1238 170" fill="none" stroke="#64748b" stroke-width="1.6" stroke-linejoin="round" stroke-dasharray="6 4" marker-end="url(#flecha)"/>
+<text x="1206" y="245" font-size="9.5" fill="#475569" text-anchor="start" transform="rotate(-90 1206 245)" paint-order="stroke" stroke="#f8fafc" stroke-width="3.5" stroke-linejoin="round">opcional</text>
+<rect x="40" y="790" width="1460" height="32" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+<path d="M 58 806 L 92 806" stroke="#64748b" stroke-width="1.6" marker-end="url(#flecha)"/>
+<text x="100" y="810" font-size="10.5" fill="#334155">flujo de datos / despliegue</text>
+<path d="M 280 806 L 314 806" stroke="#64748b" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#flecha)"/>
+<text x="322" y="810" font-size="10.5" fill="#334155">servicio opcional</text>
+<text x="470" y="810" font-size="10.5" fill="#64748b">Render sirve la API y ejecuta el worker en el mismo servicio porque el plan free no incluye Background Workers.</text>
+</svg>

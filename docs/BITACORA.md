@@ -6,6 +6,27 @@
 
 ---
 
+## 2026-11-02 · Sesión 9 · Despliegue de la v1.6.2 y cierre documental
+
+- **Objetivo:** dejar producción en v1.6.2 con API, worker y base verificados, y cerrar la documentación de entrega.
+- **Rama:** `docs/cierre-proyecto`; producción desplegada desde `fix/v1.6.2-correcciones` (`20314d0`, árbol idéntico a `main`).
+- **Hecho en esta sesión:**
+  - Render configurado con Node 22, `npm ci` y `npm run start:prod`; el worker de RabbitMQ arranca y consume `notificaciones.pasajeros`.
+  - Verificación de producción: `GET /` → `1.6.2`; `/health` → `base_datos: ok` y `mensajeria: ok` tras publicar; login 200; cambio de puerta → notificación 15 → entrega `SIMULADA` con `intento: 1`.
+  - Manuales de usuario, administrador y procedimientos actualizados a v1.6.2 y agregados al repositorio.
+  - Nuevos documentos: división de responsabilidades y estado real, guion de demo/pruebas y guía paso a paso de Power BI.
+  - Evidencias de reportes Excel/PDF en `docs/evidencias/`.
+- **Archivos tocados:** `manual/*`, `docs/DIVISION_RESPONSABILIDADES.md`, `docs/GUION_DEMO.md`, `docs/POWER_BI_PASO_A_PASO.md`, `docs/POWER_BI.md`, `docs/powerbi/README.md`, `README.md`, `docs/BITACORA.md`, `docs/evidencias/*`.
+- **Verificación:** `GET /` y `/health`; login por API; cambio de puerta y entrega asíncrona; exportación Excel/PDF. No se re-ejecutó la suite automatizada en esta sesión.
+- **Versión:** sin cambio; documentación y despliegue de la 1.6.2.
+- **Commits/PR:** PR de documentación `docs(cierre): ...`.
+- **Pendiente / siguiente paso:** crear el `.pbix` de Power BI con Power BI Desktop, cambiar la rama de Render a `main` y ensayar la defensa.
+- **Decisiones o riesgos:**
+  - Render sigue desplegando la rama `fix/v1.6.2-correcciones`; el árbol es idéntico a `main`, pero conviene cambiar la rama para que los próximos merges se desplieguen solos.
+  - El `.pbix` requiere Power BI Desktop; no se puede generar solo con el código del repositorio.
+
+---
+
 ## 2026-11-02 · Sesión 8 · Release v1.6.2
 
 - **Objetivo:** cerrar la release PATCH 1.6.2 con las correcciones de dominio ya fusionadas en `main`.
