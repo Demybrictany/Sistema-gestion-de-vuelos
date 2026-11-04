@@ -939,7 +939,9 @@ chore: tareas de mantenimiento
 - [Manual técnico](docs/MANUAL_TECNICO.md): arquitectura, modelo, reglas, API, seguridad, mensajería, agente, despliegue y operación.
 - [Guía de despliegue](docs/DESPLIEGUE.md): Render + Vercel + Neon + CloudAMQP + Ethereal.
 - [Guía del agente IA](docs/AGENTE_IA.md): RAG, herramientas, proveedores, logs y pruebas.
-- [Guía de RabbitMQ](docs/RABBITMQ.md) y [guía de Power BI](docs/POWER_BI.md).
+- [Guía de RabbitMQ](docs/RABBITMQ.md) y [guía de Power BI](docs/POWER_BI.md), con el [paso a paso del tablero](docs/POWER_BI_PASO_A_PASO.md).
+- [Distribución de responsabilidades y estado real](docs/DIVISION_RESPONSABILIDADES.md).
+- [Guion de demo y pruebas](docs/GUION_DEMO.md).
 - [Bitácora](docs/BITACORA.md): registro de sesiones, decisiones y verificación.
 - [CLAUDE.md](CLAUDE.md) y [AGENTS.md](AGENTS.md): desarrollo guiado por especificaciones.
 
