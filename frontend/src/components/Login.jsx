@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 import { useAuth } from '../auth';
 
-export default function Login() {
+export default function Login({ tipoAcceso = 'personal', onVolver }) {
   const { login } = useAuth();
   const [usuario, setUsuario] = useState('');
   const [password, setPassword] = useState('');
@@ -65,10 +65,12 @@ export default function Login() {
       <section className="login__panel">
         <form className="tarjeta-login" onSubmit={enviar}>
           <header>
-            <p className="eyebrow">Acceso al panel</p>
-            <h2>Inicia sesión</h2>
+            <p className="eyebrow">{tipoAcceso === 'pasajero' ? 'Portal de pasajeros' : 'Acceso del personal'}</p>
+            <h2>{tipoAcceso === 'pasajero' ? 'Consulta tu viaje' : 'Inicia sesión'}</h2>
             <p className="subtitulo">
-              Usa tu cuenta de administrador o secretario de operaciones.
+              {tipoAcceso === 'pasajero'
+                ? 'Ingresa con la cuenta de pasajero vinculada a tu reserva.'
+                : 'Usa tu cuenta de administrador o secretario de operaciones.'}
             </p>
           </header>
 
@@ -106,16 +108,18 @@ export default function Login() {
           ) : null}
 
           <button className="boton boton--primario" type="submit" disabled={enviando}>
-            {enviando ? 'Verificando…' : 'Entrar al panel'}
+            {enviando ? 'Verificando…' : tipoAcceso === 'pasajero' ? 'Entrar al portal' : 'Entrar al panel'}
           </button>
 
-          <div className="demo">
+          {onVolver ? <button className="boton boton--fantasma" type="button" onClick={onVolver}>← Cambiar tipo de acceso</button> : null}
+
+          {tipoAcceso === 'personal' ? <div className="demo">
             <strong>Cuentas de demostración</strong>
             <span>
               <code>admin</code> / <code>Admin123!</code> ·{' '}
               <code>secretario</code> / <code>Secretario123!</code>
             </span>
-          </div>
+          </div> : null}
         </form>
       </section>
     </main>

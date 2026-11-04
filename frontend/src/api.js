@@ -27,8 +27,14 @@ export async function api(path, { token, method = 'GET', body, signal } = {}) {
     : null;
 
   if (!respuesta.ok) {
+    const detalleValidacion = Array.isArray(datos?.errores)
+      ? datos.errores
+          .map((error) => error?.message || error?.mensaje || error)
+          .filter(Boolean)
+          .join('. ')
+      : '';
     throw new ApiError(
-      datos?.mensaje || `No se pudo completar la solicitud (${respuesta.status})`,
+      datos?.mensaje || detalleValidacion || `No se pudo completar la solicitud (${respuesta.status})`,
       respuesta.status
     );
   }
