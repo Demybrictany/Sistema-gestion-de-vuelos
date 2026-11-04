@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useAuth } from './auth';
 import { usePanel } from './hooks/usePanel';
@@ -11,6 +11,12 @@ import Login from './components/Login';
 import NotificationsFeed from './components/NotificationsFeed';
 import Reports from './components/Reports';
 import AgentChat from './components/AgentChat';
+import FlightManagement from './components/FlightManagement';
+import PassengerPortal from './components/PassengerPortal';
+import GateManagement from './components/GateManagement';
+import BaggageManagement from './components/BaggageManagement';
+import PassengerManagement from './components/PassengerManagement';
+import NotificationsCenter from './components/NotificationsCenter';
 
 const ROLES_PERMITIDOS = ['ADMINISTRADOR', 'SECRETARIO'];
 
@@ -23,6 +29,14 @@ const ESTADO_SOCKET = {
   conectado: { tono: 'good', texto: 'En vivo' },
   desconectado: { tono: 'warning', texto: 'Reconectando' },
   error: { tono: 'critical', texto: 'Sin conexión' },
+};
+
+const obtenerTemaInicial = () => {
+  const guardado = window.localStorage.getItem('aicm.tema');
+
+  if (guardado === 'claro' || guardado === 'oscuro') return guardado;
+
+  return 'oscuro';
 };
 
 function PantallaCargando() {
@@ -55,12 +69,79 @@ function SinPermiso({ usuario, onSalir }) {
   );
 }
 
-function Encabezado({ usuario, vista, onVista, socketEstado, actualizadoEn, onSalir, onRefrescar, totalVuelos }) {
+function SeleccionAcceso({ onSeleccionar }) {
+  return (
+    <main className="seleccion-acceso">
+      <div className="seleccion-acceso__marca"><span aria-hidden="true">✈</span><div><strong>AICM</strong><small>Aeropuerto Internacional de la Ciudad de México</small></div></div>
+      <section className="seleccion-acceso__intro"><p className="eyebrow">Sistema de gestión de vuelos</p><h1>¿Cómo quieres ingresar?</h1><p>Elige el acceso que corresponde a tu cuenta.</p></section>
+      <div className="seleccion-acceso__opciones">
+        <article className="tarjeta acceso-card"><span className="acceso-card__icono" aria-hidden="true">▣</span><p className="eyebrow">Personal autorizado</p><h2>Acceso del personal</h2><p>Herramientas de operación para administradores y secretarios.</p><button className="boton boton--primario" type="button" onClick={() => onSeleccionar('personal')}>Administrador o secretario <span aria-hidden="true">→</span></button></article>
+        <article className="tarjeta acceso-card acceso-card--pasajero"><span className="acceso-card__icono" aria-hidden="true">✈</span><p className="eyebrow">Información personal</p><h2>Portal de pasajeros</h2><p>Consulta tus vuelos, equipaje y notificaciones vinculadas a tu cuenta.</p><button className="boton boton--secundario" type="button" onClick={() => onSeleccionar('pasajero')}>Consultar mi viaje <span aria-hidden="true">→</span></button></article>
+      </div>
+      <p className="seleccion-acceso__pie">La información se muestra según el rol y los permisos de tu cuenta.</p>
+    </main>
+  );
+}
+
+const RUTAS_PANEL = [
+  { id: 'panel', nombre: 'Panel', icono: '▦' },
+  { id: 'vuelos', nombre: 'Vuelos', icono: '✈' },
+  { id: 'puertas', nombre: 'Puertas', icono: '▣' },
+  { id: 'equipaje', nombre: 'Equipaje', icono: '▢' },
+  { id: 'pasajeros', nombre: 'Pasajeros', icono: '♙' },
+  { id: 'notificaciones', nombre: 'Notificaciones', icono: '♧', contador: 'notificaciones' },
+  { id: 'reportes', nombre: 'Reportes', icono: '▥' },
+  { id: 'asistente', nombre: 'Asistente', icono: '✳' },
+];
+
+function BarraLateral({ vista, onVista, totalVuelos, notificacionesPendientes, rol, menuAbierto, onCerrar }) {
+  return (
+    <>
+      <aside className={`barra-lateral${menuAbierto ? ' barra-lateral--abierta' : ''}`}>
+        <div className="barra-lateral__marca">
+          <span className="barra-lateral__logo" aria-hidden="true">✈</span>
+          <div><strong>AICM</strong><span>Aeropuerto Internacional<br />de la Ciudad de México</span></div>
+        </div>
+        <div className="barra-lateral__separador" />
+        <p className="barra-lateral__etiqueta">Operaciones</p>
+        <nav className="barra-lateral__nav" aria-label="Secciones del sistema">
+          {RUTAS_PANEL.map((ruta) => {
+            const contador = ruta.id === 'vuelos' ? totalVuelos : ruta.id === 'notificaciones' ? notificacionesPendientes : null;
+            return (
+              <button key={ruta.id} type="button" className={`barra-lateral__enlace${vista === ruta.id ? ' activo' : ''}`} onClick={() => { onVista(ruta.id); onCerrar(); }} aria-current={vista === ruta.id ? 'page' : undefined}>
+                <span className="barra-lateral__icono" aria-hidden="true">{ruta.icono}</span>
+                <span>{ruta.nombre}</span>
+                {contador !== null && contador !== undefined && <span className={`nav-contador${ruta.id === 'notificaciones' && contador > 0 ? ' nav-contador--alerta' : ''}`}>{contador}</span>}
+              </button>
+            );
+          })}
+        </nav>
+        <div className="barra-lateral__pie">
+          <span className="barra-lateral__rol">Rol: {NOMBRES_ROL[rol] || rol}</span>
+          <small>Sistema de Gestión de Vuelos</small>
+          <small>Versión 1.6.2</small>
+        </div>
+      </aside>
+      {menuAbierto && <button className="barra-lateral__fondo" type="button" onClick={onCerrar} aria-label="Cerrar navegación" />}
+    </>
+  );
+}
+
+function Encabezado({ usuario, vista, onVista, socketEstado, actualizadoEn, onSalir, onRefrescar, totalVuelos, tema, onCambiarTema, menuAbierto, onAlternarMenu }) {
   const vivo = ESTADO_SOCKET[socketEstado] || ESTADO_SOCKET.desconectado;
   const nombre = [usuario.nombres, usuario.apellidos].filter(Boolean).join(' ');
+  const [ahora, setAhora] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setAhora(new Date()), 60000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   return (
     <header className="barra">
+      <button className="shell-menu" type="button" onClick={onAlternarMenu} aria-label={menuAbierto ? 'Cerrar navegación' : 'Abrir navegación'} aria-expanded={menuAbierto}>
+        <span aria-hidden="true">{menuAbierto ? '×' : '☰'}</span>
+      </button>
       <div className="barra__marca">
         <span className="barra__logo" aria-hidden="true">
           ✈
@@ -86,7 +167,39 @@ function Encabezado({ usuario, vista, onVista, socketEstado, actualizadoEn, onSa
           onClick={() => onVista('vuelos')}
           aria-current={vista === 'vuelos' ? 'page' : undefined}
         >
-          Vuelos <span className="nav-contador">{totalVuelos}</span>
+          Vuelos {totalVuelos !== null && totalVuelos !== undefined ? <span className="nav-contador">{totalVuelos}</span> : null}
+        </button>
+        <button
+          type="button"
+          className={vista === 'puertas' ? 'activo' : ''}
+          onClick={() => onVista('puertas')}
+          aria-current={vista === 'puertas' ? 'page' : undefined}
+        >
+          Puertas
+        </button>
+        <button
+          type="button"
+          className={vista === 'equipaje' ? 'activo' : ''}
+          onClick={() => onVista('equipaje')}
+          aria-current={vista === 'equipaje' ? 'page' : undefined}
+        >
+          Equipaje
+        </button>
+        <button
+          type="button"
+          className={vista === 'pasajeros' ? 'activo' : ''}
+          onClick={() => onVista('pasajeros')}
+          aria-current={vista === 'pasajeros' ? 'page' : undefined}
+        >
+          Pasajeros
+        </button>
+        <button
+          type="button"
+          className={vista === 'notificaciones' ? 'activo' : ''}
+          onClick={() => onVista('notificaciones')}
+          aria-current={vista === 'notificaciones' ? 'page' : undefined}
+        >
+          Notificaciones
         </button>
         <button
           type="button"
@@ -107,6 +220,7 @@ function Encabezado({ usuario, vista, onVista, socketEstado, actualizadoEn, onSa
       </nav>
 
       <div className="barra__acciones">
+        <span className="shell-header__fecha"><span aria-hidden="true">◷</span>{ahora.toLocaleDateString('es-MX', { weekday: 'short', day: '2-digit', month: 'short' })} · {ahora.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</span>
         <span className={`estado-vivo estado-vivo--${vivo.tono}`}>
           <span className="estado-vivo__punto" aria-hidden="true" />
           {vivo.texto}
@@ -126,7 +240,18 @@ function Encabezado({ usuario, vista, onVista, socketEstado, actualizadoEn, onSa
           className="boton boton--fantasma boton--actualizar"
           onClick={() => onRefrescar()}
         >
-          Actualizar
+          <span aria-hidden="true">↻</span>Actualizar
+        </button>
+
+        <button
+          type="button"
+          className="boton boton--fantasma"
+          onClick={onCambiarTema}
+          aria-label={`Cambiar a tema ${tema === 'oscuro' ? 'claro' : 'oscuro'}`}
+          aria-pressed={tema === 'oscuro'}
+        >
+          <span aria-hidden="true">{tema === 'oscuro' ? '☀' : '☾'}</span>
+          {tema === 'oscuro' ? 'Tema claro' : 'Tema oscuro'}
         </button>
 
         <span className="usuario" title={`${nombre || usuario.nombre_usuario} · ${usuario.rol?.nombre}`}>
@@ -147,6 +272,12 @@ function VistaPanel({ panel }) {
     <>
       <KpiGrid kpis={panel.kpis} />
 
+      {Number(panel.kpis?.puertas_total) < 25 ? (
+        <p className="alerta alerta--advertencia" role="status">
+          El backend registra {panel.kpis?.puertas_total ?? 0} puertas; el requisito del proyecto solicita al menos 25.
+        </p>
+      ) : null}
+
       <div className="rejilla rejilla--principal">
         <section className="tarjeta tarjeta--mapa">
           <div className="tarjeta__cabecera">
@@ -154,7 +285,7 @@ function VistaPanel({ panel }) {
               <p className="eyebrow">Terminal</p>
               <h2>Mapa de puertas</h2>
               <p className="subtitulo">
-                25 puertas agrupadas por zona. Selecciona una para ver su vuelo.
+                {panel.kpis.puertas_total} puertas registradas agrupadas por zona. Selecciona una para ver su vuelo.
               </p>
             </div>
           </div>
@@ -197,8 +328,9 @@ function VistaPanel({ panel }) {
   );
 }
 
-function Workspace({ token, usuario, onSalir }) {
+function Workspace({ token, usuario, onSalir, tema, onCambiarTema }) {
   const [vista, setVista] = useState('panel');
+  const [menuAbierto, setMenuAbierto] = useState(false);
   const { panel, cargando, error, actualizadoEn, refrescar, refrescarPronto } =
     usePanel(token);
   const socketEstado = useSocket({
@@ -209,18 +341,32 @@ function Workspace({ token, usuario, onSalir }) {
 
   return (
     <div className="aplicacion">
-      <Encabezado
-        usuario={usuario}
+      <BarraLateral
         vista={vista}
         onVista={setVista}
-        socketEstado={socketEstado}
-        actualizadoEn={actualizadoEn}
-        onSalir={onSalir}
-        onRefrescar={refrescar}
-        totalVuelos={panel?.kpis?.vuelos_total || 0}
+        totalVuelos={panel?.kpis?.vuelos_total}
+        notificacionesPendientes={panel?.kpis?.notificaciones_pendientes}
+        rol={usuario.rol?.nombre}
+        menuAbierto={menuAbierto}
+        onCerrar={() => setMenuAbierto(false)}
       />
+      <div className="workspace-main">
+        <Encabezado
+          usuario={usuario}
+          vista={vista}
+          onVista={setVista}
+          socketEstado={socketEstado}
+          actualizadoEn={actualizadoEn}
+          onSalir={onSalir}
+          onRefrescar={refrescar}
+          totalVuelos={panel?.kpis?.vuelos_total}
+          tema={tema}
+          onCambiarTema={onCambiarTema}
+          menuAbierto={menuAbierto}
+          onAlternarMenu={() => setMenuAbierto((abierto) => !abierto)}
+        />
 
-      <main className="contenido">
+      <main className="contenido shell-contenido">
         {error ? (
           <p className="alerta alerta--error" role="alert">
             <span aria-hidden="true">!</span> No se pudo actualizar el panel:{' '}
@@ -232,7 +378,7 @@ function Workspace({ token, usuario, onSalir }) {
 
         {vista === 'asistente' ? <AgentChat token={token} /> : null}
 
-        {vista !== 'reportes' && vista !== 'asistente' && !panel && cargando ? (
+        {vista !== 'reportes' && vista !== 'asistente' && vista !== 'puertas' && vista !== 'equipaje' && vista !== 'pasajeros' && vista !== 'notificaciones' && !panel && cargando ? (
           <div className="esqueleto" role="status" aria-live="polite">
             <div className="esqueleto__linea esqueleto__linea--corta" />
             <div className="esqueleto__bloque" />
@@ -242,39 +388,67 @@ function Workspace({ token, usuario, onSalir }) {
 
         {vista === 'panel' && panel ? <VistaPanel panel={panel} /> : null}
 
-        {vista === 'vuelos' && panel ? (
-          <FlightsTable
-            vuelos={panel.vuelos}
-            titulo="Todos los vuelos"
-            descripcion="Busca por código, ciudad o puerta y filtra por estado operativo."
-          />
-        ) : null}
+        {vista === 'vuelos' ? <FlightManagement token={token} rol={usuario.rol?.nombre} /> : null}
+
+        {vista === 'puertas' ? <GateManagement token={token} /> : null}
+
+        {vista === 'equipaje' ? <BaggageManagement token={token} /> : null}
+
+        {vista === 'pasajeros' ? <PassengerManagement token={token} /> : null}
+
+        {vista === 'notificaciones' ? <NotificationsCenter token={token} /> : null}
       </main>
 
-      <footer className="pie">
+      <footer className="pie shell-footer">
         <span>AICM · Sistema de gestión de vuelos</span>
         <span>
-          Datos operativos en tiempo real · {panel?.kpis?.puertas_total || 25} puertas ·{' '}
-          {panel?.kpis?.vuelos_total || 0} vuelos
+          {panel
+            ? `Datos operativos en tiempo real · ${panel.kpis?.puertas_total ?? '—'} puertas · ${panel.kpis?.vuelos_total ?? '—'} vuelos`
+            : 'Cargando datos operativos…'}
         </span>
       </footer>
+      </div>
     </div>
   );
 }
 
 export default function App() {
   const { token, usuario, cargando, logout } = useAuth();
+  const [tema, setTema] = useState(obtenerTemaInicial);
+  const [tipoAcceso, setTipoAcceso] = useState(null);
+
+  useEffect(() => {
+    document.documentElement.dataset.tema = tema;
+    window.localStorage.setItem('aicm.tema', tema);
+  }, [tema]);
+
+  const cambiarTema = () =>
+    setTema((actual) => (actual === 'oscuro' ? 'claro' : 'oscuro'));
 
   if (cargando) return <PantallaCargando />;
-  if (!token || !usuario) return <Login />;
+  if (!token || !usuario) {
+    if (!tipoAcceso) return <SeleccionAcceso onSeleccionar={setTipoAcceso} />;
+    return <Login tipoAcceso={tipoAcceso} onVolver={() => setTipoAcceso(null)} />;
+  }
 
   const rol = usuario.rol?.nombre;
+
+  if (rol === 'PASAJERO') {
+    return <PassengerPortal token={token} usuario={usuario} onSalir={logout} tema={tema} onCambiarTema={cambiarTema} />;
+  }
 
   if (!ROLES_PERMITIDOS.includes(rol)) {
     return <SinPermiso usuario={usuario} onSalir={logout} />;
   }
 
   return (
-    <Workspace key={usuario.id_usuario} token={token} usuario={usuario} onSalir={logout} />
+    <Workspace
+      key={usuario.id_usuario}
+      token={token}
+      usuario={usuario}
+      onSalir={logout}
+      tema={tema}
+      onCambiarTema={cambiarTema}
+    />
   );
 }

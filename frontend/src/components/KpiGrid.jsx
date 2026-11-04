@@ -40,9 +40,9 @@ export default function KpiGrid({ kpis }) {
         icono="✈"
       />
       <Kpi
-        etiqueta="Pasajeros activos"
+        etiqueta="Pasajeros en vuelos activos"
         valor={formatearNumero(kpis.pasajeros_activos)}
-        detalle={`${formatearNumero(kpis.equipajes_en_proceso)} equipajes en proceso`}
+        detalle={`${formatearNumero(kpis.equipajes_en_proceso)} equipajes en proceso · reservas de vuelos no finalizados`}
         icono="●"
       />
       <Kpi

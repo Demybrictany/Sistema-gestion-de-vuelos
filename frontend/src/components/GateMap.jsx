@@ -151,7 +151,7 @@ export default function GateMap({ puertas }) {
             </dl>
           ) : (
             <p className="puerta-detalle__nota">
-              La puerta está libre. Asigna un vuelo desde la vista de vuelos.
+              La puerta está libre. Usa la sección Puertas para asignarle un vuelo.
             </p>
           )}
         </aside>
