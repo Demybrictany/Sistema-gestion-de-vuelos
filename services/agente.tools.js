@@ -247,6 +247,27 @@ const buscarDocumentacion = async (usuario, filtros = {}) => {
   };
 };
 
+const consultarVuelosRetrasados = async (usuario) => {
+  if (!esStaff(usuario)) {
+    throw new Error(
+      'No tienes permisos para consultar estadísticas generales.'
+    );
+  }
+
+  const filas = await sequelize.query(
+    `SELECT COUNT(*)::int AS total
+     FROM vuelos
+     WHERE estado::text = 'RETRASADO'`,
+    { type: QueryTypes.SELECT }
+  );
+
+  return {
+    total: filas[0].total,
+    estado: 'RETRASADO',
+    descripcion: 'Cantidad de vuelos retrasados'
+  };
+};
+
 const HERRAMIENTAS = {
   consultar_vuelos: consultarVuelos,
   consultar_puertas: consultarPuertas,
@@ -254,6 +275,7 @@ const HERRAMIENTAS = {
   consultar_escalas: consultarEscalas,
   mis_vuelos: misVuelos,
   buscar_documentacion: buscarDocumentacion,
+  consultar_vuelos_retrasados: consultarVuelosRetrasados,
 };
 
 const TOOLS = [
@@ -336,6 +358,16 @@ const TOOLS = [
       additionalProperties: false,
     },
   },
+  {
+  name: 'consultar_vuelos_retrasados',
+  description:
+    'Consulta la cantidad total de vuelos retrasados registrados en PostgreSQL. Solo para administradores y secretarios.',
+  input_schema: {
+    type: 'object',
+    properties: {},
+    additionalProperties: false,
+  },
+},
 ];
 
 const ejecutarHerramienta = async (nombre, entrada, usuario) => {
